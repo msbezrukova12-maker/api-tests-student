@@ -18,10 +18,10 @@ import (
 )
 
 const (
-	existingAdTitle = ""
-	searchBeginning = ""
-	searchMiddle    = ""
-	searchEnd       = ""
+	existingAdTitle = "микро кот белый пушистый"
+	searchBeginning = "микро"
+	searchMiddle    = "белый"
+	searchEnd       = "пушистый"
 )
 
 type TestSuite struct {
