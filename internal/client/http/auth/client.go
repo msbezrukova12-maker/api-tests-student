@@ -5,9 +5,8 @@ import (
 	"testing"
 
 	"api-tests-template/internal/constants/path"
-	authModels "api-tests-template/internal/managers/auth/models"
-
 	apiRunner "api-tests-template/internal/helpers/api-runner"
+	authModels "api-tests-template/internal/managers/auth/models"
 )
 
 // HttpPostAuthLogin выполняет POST-запрос для авторизации пользователя.
