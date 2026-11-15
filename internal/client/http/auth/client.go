@@ -10,12 +10,23 @@ import (
 	apiRunner "api-tests-template/internal/helpers/api-runner"
 )
 
-// HttpPostAuthLogin выполняет POST-запрос для авторизации пользователя
+// HttpPostAuthLogin выполняет POST-запрос для авторизации пользователя.
 func HttpPostAuthLogin(t *testing.T, request authModels.LoginRequest) *http.Response {
+	t.Helper()
 	return apiRunner.GetRunner().Create().Post(path.AuthLoginPath).
 		ContentType("application/json").
 		JSON(request).
 		Expect(t).
 		Status(http.StatusOK).
+		End().Response
+}
+
+// HttpPostAuthRegister регистрирует тестового пользователя.
+func HttpPostAuthRegister(t *testing.T, request authModels.RegisterRequest) *http.Response {
+	t.Helper()
+	return apiRunner.GetRunner().Create().Post(path.AuthRegisterPath).
+		ContentType("application/json").
+		JSON(request).
+		Expect(t).
 		End().Response
 }

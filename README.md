@@ -1,55 +1,118 @@
 # API-тесты для проекта https://testboard.avito.com/
 
+Проект содержит API-тесты TestBoard, построенные по архитектуре **Client Layer → Manager Layer → Scenario**.
+
 ## Полезные ссылки
 
 1. [Swagger-спецификация](https://testboard.avito.com/swagger/index.html)
-2. [Техническое задание](https://docs.google.com/document/d/1IZ9SxEcePoQT6lyEmukycp1qNok4HZtok73UQnPwKSA/edit?usp=sharing)
-3. [Библиотека для написания API-тестов](https://github.com/steinfletcher/apitest)
-4. [Мощная библиотека анализа JSON для Go](https://github.com/tidwall/gjson)
+2. [Библиотека apitest](https://github.com/steinfletcher/apitest)
+3. [Библиотека gjson](https://github.com/tidwall/gjson)
 
-## Запуск тестов
+## Требования
 
-1. Установите любое IDE для разработки: [Jetbrains GoLand](https://www.jetbrains.com/ru-ru/go/) (Платное или по студенческой лицензии), [VS Code](https://code.visualstudio.com/) (бесплатное).
-2. Установите [Git](https://git-scm.com/install/) на компьютер
-3. [Установите](https://go.dev/doc/install) Go версии 1.25.1
-4. [Настройте](https://docs.github.com/ru/authentication/connecting-to-github-with-ssh) доступ к своему Github-аккаунту
-   по SSH-ключу.
-5. Склонируйте себе репозиторий: `git clone <путь к вашему репозиторию>`
-6. Подтяните необходимые зависимости через команду в корне проекта:
+- Go 1.25.1 или выше
+- Git
+- golangci-lint
+- учётная запись TestBoard
+
+## Настройка
+
+1. Склонируйте fork:
 
 ```bash
-   go mod tidy
+git clone https://github.com/<ваш-логин>/api-tests-student.git
+cd api-tests-student
 ```
 
-7. В файле `.env.override` (создайте его в корне, если нет) выставьте правильные значения для переменных окружения:
+2. Установите зависимости:
 
+```bash
+go mod tidy
 ```
+
+3. Создайте в корне файл `.env.override`:
+
+```env
 TEST_LOGIN=your_login
 TEST_PASSWORD=your_password
 ```
 
-8. Для запуска всех тестов достаточно выполнить команду в корне проекта:
+Файл `.env.override` находится в `.gitignore` и не должен попадать в Git.
 
-```bash
-  go test -v ./...
+Базовый URL уже задаётся в `.env`:
+
+```env
+API_URL=https://testboard.avito.com/api/v1
 ```
 
-9. Отдельный пакет с тестами можно запустить командой:
+## Запуск тестов
+
+Все тесты:
 
 ```bash
-  go test -v ./tests/scenarios/myAdvertisement/
+go test -v ./...
 ```
 
-## Логирование
-
-Для включения логирования request/response в консоль: выставьте переменную окружения `DEBUG=true` в
-`.env.override`
-
-## Запуск линтера
-
-1. Установить приложение [golangci-lint](https://golangci-lint.run/docs/welcome/install/local/)
-2. Запуск линтера (из корня репозитория):
+Проверка идемпотентности тремя последовательными прогонами:
 
 ```bash
-  golangci-lint run
+go test -count=3 ./...
 ```
+
+Только создание объявления:
+
+```bash
+go test -v ./tests/scenarios/advertisementCreate/
+```
+
+Только избранное:
+
+```bash
+go test -v ./tests/scenarios/favorites/
+```
+
+Поиск объявлений:
+
+```bash
+go test -v ./tests/scenarios/advertisementSearch/
+```
+
+## Линтер
+
+Установите golangci-lint по официальной инструкции и запустите из корня проекта:
+
+```bash
+golangci-lint run
+```
+
+## Что покрыто
+
+### Создание объявления
+
+- создание объявления со всеми параметрами;
+- получение созданного объявления по ID;
+- поиск по полному title;
+- проверка фотографий через `GET /advertisements/{id}/photos`;
+- обязательные поля и ошибки валидации;
+- пустой и слишком длинный title;
+- отрицательная цена;
+- отсутствие фотографий;
+- отсутствие и невалидный bearer-токен.
+
+### Избранное
+
+- добавление объявления в избранное и проверка через `GET /favorites`;
+- удаление объявления из избранного;
+- каскадное исчезновение favorite после удаления самого объявления;
+- добавление и удаление несуществующего `ad_id`;
+- отсутствие и невалидный bearer-токен;
+- повторное добавление одного объявления;
+- запрет добавления собственного объявления.
+
+## Изоляция тестов
+
+Тесты сами создают необходимые объявления и регистрируют cleanup через `t.Cleanup`.
+Для сценариев избранного автоматически создаётся отдельный тестовый пользователь, поэтому ревьюеру не нужен второй аккаунт.
+Перед каждым favorites-сценарием его список избранного очищается, а после сценария выполняется повторный cleanup.
+
+Тесты не зависят от заранее созданных объявлений в аккаунте и рассчитаны на повторные запуски.

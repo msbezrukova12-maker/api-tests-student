@@ -8,6 +8,7 @@ import (
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
+// RandomString генерирует криптографически случайную строку заданной длины.
 func RandomString(length int) string {
 	b := make([]byte, length)
 	for i := range b {
