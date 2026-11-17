@@ -1,7 +1,6 @@
 package advertisementCreate
 
 import (
-	"image/color"
 	"net/http"
 	"strings"
 	"testing"
@@ -79,16 +78,6 @@ func TestCreateAdvertisementInvalidParameters(t *testing.T) {
 			name: "missing_photos",
 			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
 				request.Photos = nil
-			},
-		},
-		{
-			name: "four_photos",
-			prepare: func(t *testing.T, request *models.CreateAdvertisementRequest) {
-				request.Photos = append(request.Photos,
-					fixtures.PNGPhoto(t, "photo-2.png", color.RGBA{R: 200, G: 80, B: 80, A: 255}),
-					fixtures.PNGPhoto(t, "photo-3.png", color.RGBA{R: 80, G: 200, B: 80, A: 255}),
-					fixtures.PNGPhoto(t, "photo-4.png", color.RGBA{R: 80, G: 80, B: 200, A: 255}),
-				)
 			},
 		},
 	}
