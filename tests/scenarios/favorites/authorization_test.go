@@ -13,7 +13,6 @@ import (
 
 const invalidToken = "incorrect_token"
 
-// TestFavoritesWithoutAuthorization проверяет 401 для ручек избранного без валидной авторизации.
 func TestFavoritesWithoutAuthorization(t *testing.T) {
 	owner := fixtures.Login(t)
 	advertisement := advertisements.CreateAdvertisement(t, owner.Token, fixtures.AdvertisementRequest(t))
@@ -64,9 +63,7 @@ func TestFavoritesWithoutAuthorization(t *testing.T) {
 		t.Run(operation.name, func(t *testing.T) {
 			for _, tokenCase := range tokens {
 				t.Run(tokenCase.name, func(t *testing.T) {
-					t.Logf("[Step] Вызываем %s без валидной авторизации: %s", operation.name, tokenCase.name)
-					response := operation.call(t, tokenCase.token)
-					t.Logf("[Result] HTTP 401, error=%q, message=%q", response.Error, response.Message)
+					operation.call(t, tokenCase.token)
 				})
 			}
 		})
