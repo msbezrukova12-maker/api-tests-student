@@ -16,8 +16,12 @@ import (
 // GetAdvertisementsList возвращает объявления, найденные по строке поиска.
 func GetAdvertisementsList(t *testing.T, token, text string) models.AdvertisementsList {
 	t.Helper()
-	return utils.DecodeResponse[models.AdvertisementsList](t,
-		client.HttpGetAdvertisements(t, token, text), http.StatusOK)
+
+	body := utils.ReadResponseBody(t, client.HttpGetAdvertisements(t, token, text))
+
+	var result models.AdvertisementsList
+	require.NoError(t, json.Unmarshal(body, &result), "Некорректный advertisements response: %s", body)
+	return result
 }
 
 // CreateAdvertisement создаёт объявление и регистрирует cleanup на его удаление.
