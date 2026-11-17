@@ -13,6 +13,7 @@ import (
 	"api-tests-template/internal/utils"
 )
 
+// GetAllFavorites возвращает первую страницу избранного тестового пользователя.
 func GetAllFavorites(t *testing.T, token string) []models.Favorite {
 	t.Helper()
 
@@ -22,11 +23,12 @@ func GetAllFavorites(t *testing.T, token string) []models.Favorite {
 	require.Equal(t, http.StatusOK, response.StatusCode, "response: %s", body)
 
 	var result models.FavoritesList
-	require.NoError(t, json.Unmarshal(body, &result))
+	require.NoError(t, json.Unmarshal(body, &result), "Ответ API должен соответствовать JSON-модели")
 
 	return result.Items
 }
 
+// AddFavorite добавляет объявление в избранное и регистрирует очистку.
 func AddFavorite(t *testing.T, token, advertisementID string) models.Favorite {
 	t.Helper()
 
@@ -37,12 +39,11 @@ func AddFavorite(t *testing.T, token, advertisementID string) models.Favorite {
 	)
 	body := utils.ReadResponseBody(t, response)
 
-	require.GreaterOrEqual(t, response.StatusCode, http.StatusOK, "response: %s", body)
-	require.Less(t, response.StatusCode, http.StatusMultipleChoices, "response: %s", body)
+	require.Equal(t, http.StatusCreated, response.StatusCode, "Добавление избранного: response=%s", body)
 
 	var result models.Favorite
-	require.NoError(t, json.Unmarshal(body, &result))
-	require.Equal(t, advertisementID, result.Advertisement.ID)
+	require.NoError(t, json.Unmarshal(body, &result), "Ответ API должен соответствовать JSON-модели")
+	require.Equal(t, advertisementID, result.Advertisement.ID, "Значение result.Advertisement.ID не совпадает с ожидаемым")
 
 	t.Cleanup(func() {
 		RemoveFavoriteIfExists(t, token, advertisementID)
@@ -51,6 +52,7 @@ func AddFavorite(t *testing.T, token, advertisementID string) models.Favorite {
 	return result
 }
 
+// AddFavoriteExpectStatus проверяет статус ошибки добавления в избранное.
 func AddFavoriteExpectStatus(
 	t *testing.T,
 	token string,
@@ -66,39 +68,34 @@ func AddFavoriteExpectStatus(
 	)
 }
 
-func AddFavoriteExpectClientError(
-	t *testing.T,
-	token string,
-	request any,
-) (int, apiModels.ErrorResponse) {
-	t.Helper()
-
-	return decodeClientError(t, client.HttpPostFavorite(t, token, request))
-}
-
+// RemoveFavorite проверяет удаление из избранного.
 func RemoveFavorite(t *testing.T, token, advertisementID string) {
 	t.Helper()
 
 	response := client.HttpDeleteFavorite(t, token, advertisementID)
 	body := utils.ReadResponseBody(t, response)
 
-	require.GreaterOrEqual(t, response.StatusCode, http.StatusOK, "response: %s", body)
-	require.Less(t, response.StatusCode, http.StatusMultipleChoices, "response: %s", body)
+	require.Equal(t, http.StatusNoContent, response.StatusCode, "Удаление избранного: response=%s", body)
 }
 
+// RemoveFavoriteIfExists очищает избранное, допуская уже удалённую запись.
 func RemoveFavoriteIfExists(t *testing.T, token, advertisementID string) {
 	t.Helper()
 
 	response := client.HttpDeleteFavorite(t, token, advertisementID)
 	body := utils.ReadResponseBody(t, response)
 
-	if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusInternalServerError {
+	if response.StatusCode == http.StatusNoContent {
 		return
 	}
 
-	require.Fail(t, "cleanup failed", "status=%d, response=%s", response.StatusCode, body)
+	require.Equal(t, http.StatusNotFound, response.StatusCode, "Очистка избранного: response=%s", body)
+	var result apiModels.ErrorResponse
+	require.NoError(t, json.Unmarshal(body, &result), "Ответ очистки избранного должен быть JSON")
+	require.Equal(t, "Favorite entry not found", result.Message, "Неожиданная ошибка очистки избранного")
 }
 
+// RemoveFavoriteExpectStatus проверяет статус ошибки удаления из избранного.
 func RemoveFavoriteExpectStatus(
 	t *testing.T,
 	token string,
@@ -114,16 +111,7 @@ func RemoveFavoriteExpectStatus(
 	)
 }
 
-func RemoveFavoriteExpectClientError(
-	t *testing.T,
-	token string,
-	advertisementID string,
-) (int, apiModels.ErrorResponse) {
-	t.Helper()
-
-	return decodeClientError(t, client.HttpDeleteFavorite(t, token, advertisementID))
-}
-
+// GetFavoritesExpectStatus проверяет статус ошибки получения избранного.
 func GetFavoritesExpectStatus(t *testing.T, token string, expectedStatus int) apiModels.ErrorResponse {
 	t.Helper()
 
@@ -134,6 +122,7 @@ func GetFavoritesExpectStatus(t *testing.T, token string, expectedStatus int) ap
 	)
 }
 
+// decodeFavoriteError проверяет статус и разбирает ошибочный ответ.
 func decodeFavoriteError(
 	t *testing.T,
 	response *http.Response,
@@ -145,25 +134,9 @@ func decodeFavoriteError(
 	require.Equal(t, expectedStatus, response.StatusCode, "response: %s", body)
 
 	var result apiModels.ErrorResponse
-	require.NoError(t, json.Unmarshal(body, &result))
-	require.NotEmpty(t, result.Error)
-	require.NotEmpty(t, result.Message)
+	require.NoError(t, json.Unmarshal(body, &result), "Ответ API должен соответствовать JSON-модели")
+	require.NotEmpty(t, result.Error, "Поле result.Error не должно быть пустым")
+	require.NotEmpty(t, result.Message, "Поле result.Message не должно быть пустым")
 
 	return result
-}
-
-func decodeClientError(t *testing.T, response *http.Response) (int, apiModels.ErrorResponse) {
-	t.Helper()
-
-	body := utils.ReadResponseBody(t, response)
-
-	require.GreaterOrEqual(t, response.StatusCode, http.StatusBadRequest, "response: %s", body)
-	require.Less(t, response.StatusCode, http.StatusInternalServerError, "response: %s", body)
-
-	var result apiModels.ErrorResponse
-	require.NoError(t, json.Unmarshal(body, &result))
-	require.NotEmpty(t, result.Error)
-	require.NotEmpty(t, result.Message)
-
-	return response.StatusCode, result
 }

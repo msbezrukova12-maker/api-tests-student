@@ -5,70 +5,79 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"api-tests-template/internal/managers/advertisements"
 	"api-tests-template/internal/managers/advertisements/models"
 	"api-tests-template/tests/fixtures"
 )
 
 func TestCreateAdvertisementInvalidParameters(t *testing.T) {
+	t.Log("Precondition: подготовка пользователя и тестовых данных")
 	user := fixtures.Login(t)
 
 	cases := []struct {
 		name    string
+		message string
 		prepare func(*models.CreateAdvertisementRequest)
 	}{
 		{
-			name: "missing_title",
+			name:    "missing_title",
+			message: fixtures.RequiredTitleMessage,
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				delete(request.Fields, "title")
 			},
 		},
 		{
-			name: "empty_title",
+			name:    "empty_title",
+			message: fixtures.RequiredTitleMessage,
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				request.Fields["title"] = ""
 			},
 		},
 		{
-			name: "title_51_characters",
+			name:    "title_51_characters",
+			message: "title must not exceed 50 characters provided 51",
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				request.Fields["title"] = strings.Repeat("a", 51)
 			},
 		},
 		{
-			name: "missing_description",
+			name:    "missing_description",
+			message: "description is required",
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				delete(request.Fields, "description")
 			},
 		},
 		{
-			name: "description_501_characters",
+			name:    "description_501_characters",
+			message: "description must be between 1 and 500 characters",
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				request.Fields["description"] = strings.Repeat("b", 501)
 			},
 		},
 		{
-			name: "negative_price",
+			name:    "negative_price",
+			message: fixtures.PriceValidationMessage,
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				request.Fields["price"] = "-1"
 			},
 		},
 		{
-			name: "price_above_1000000",
+			name:    "price_above_1000000",
+			message: fixtures.PriceValidationMessage,
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				request.Fields["price"] = "1000001"
 			},
 		},
 		{
-			name: "quantity_101",
+			name:    "quantity_101",
+			message: "quantity must be between 1 and 100 inclusive",
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				request.Fields["quantity"] = "101"
 			},
 		},
 		{
-			name: "missing_photos",
+			name:    "missing_photos",
+			message: "at least 1 photo is required",
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				request.Photos = nil
 			},
@@ -77,6 +86,7 @@ func TestCreateAdvertisementInvalidParameters(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Log("Step: " + t.Name())
 			request := fixtures.AdvertisementRequest(t)
 			tc.prepare(&request)
 
@@ -87,8 +97,11 @@ func TestCreateAdvertisementInvalidParameters(t *testing.T) {
 				http.StatusBadRequest,
 			)
 
-			require.NotEmpty(t, response.Error)
-			require.NotEmpty(t, response.Message)
+			fixtures.AssertError(t, response, fixtures.InvalidRequestError, tc.message)
+			t.Log("Result: status и ошибка соответствуют ожиданиям")
 		})
+	}
+	if !t.Failed() {
+		t.Log("Result: проверки сценария пройдены")
 	}
 }

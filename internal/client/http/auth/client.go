@@ -20,6 +20,7 @@ func HttpPostAuthLogin(t *testing.T, request authModels.LoginRequest) *http.Resp
 		End().Response
 }
 
+// HttpPostAuthRegister отправляет запрос регистрации тестового пользователя.
 func HttpPostAuthRegister(t *testing.T, request authModels.RegisterRequest) *http.Response {
 	return apiRunner.GetRunner().Create().Post(path.AuthRegisterPath).
 		ContentType("application/json").

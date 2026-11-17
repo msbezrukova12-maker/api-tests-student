@@ -17,9 +17,8 @@ type Advertisement struct {
 }
 
 type Photo struct {
-	ID              string `json:"id"`
-	AdvertisementID string `json:"advertisement_id"`
-	URL             string `json:"url"`
-	SortOrder       int    `json:"sort_order"`
-	CreatedAt       string `json:"created_at"`
+	ID        string `json:"id"`
+	URL       string `json:"url"`
+	SortOrder int    `json:"sort_order"`
+	CreatedAt string `json:"created_at"`
 }

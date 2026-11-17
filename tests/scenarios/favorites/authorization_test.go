@@ -11,9 +11,8 @@ import (
 	"api-tests-template/tests/fixtures"
 )
 
-const invalidToken = "incorrect_token"
-
 func TestFavoritesWithoutAuthorization(t *testing.T) {
+	t.Log("Precondition: подготовка пользователя и тестовых данных")
 	owner := fixtures.Login(t)
 	advertisement := advertisements.CreateAdvertisement(t, owner.Token, fixtures.AdvertisementRequest(t))
 
@@ -52,20 +51,28 @@ func TestFavoritesWithoutAuthorization(t *testing.T) {
 	}
 
 	tokens := []struct {
-		name  string
-		token string
+		name    string
+		token   string
+		message string
 	}{
-		{name: "missing_token"},
-		{name: "invalid_token", token: invalidToken},
+		{name: "missing_token", message: fixtures.MissingTokenMessage},
+		{name: "invalid_token", token: fixtures.InvalidToken, message: fixtures.InvalidAuthorizationMessage},
 	}
 
 	for _, operation := range operations {
 		t.Run(operation.name, func(t *testing.T) {
+			t.Log("Step: " + t.Name())
 			for _, tokenCase := range tokens {
 				t.Run(tokenCase.name, func(t *testing.T) {
-					operation.call(t, tokenCase.token)
+					t.Log("Step: " + t.Name())
+					response := operation.call(t, tokenCase.token)
+					fixtures.AssertError(t, response, fixtures.UnauthorizedError, tokenCase.message)
+					t.Log("Result: получены 401 и точная ошибка авторизации")
 				})
 			}
 		})
+	}
+	if !t.Failed() {
+		t.Log("Result: проверки сценария пройдены")
 	}
 }

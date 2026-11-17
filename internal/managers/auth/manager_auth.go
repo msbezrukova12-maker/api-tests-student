@@ -30,22 +30,23 @@ func Login(t *testing.T, username, password string) models.LoginOkResponse {
 
 	loginResponse := models.LoginOkResponse{}
 	err := json.Unmarshal(respArray, &loginResponse)
-	require.NoError(t, err)
+	require.NoError(t, err, "Операция должна завершиться без ошибки")
 
 	return loginResponse
 }
 
+// Register регистрирует отдельного тестового пользователя.
 func Register(t *testing.T, request models.RegisterRequest) models.LoginOkResponse {
 	response := auth.HttpPostAuthRegister(t, request)
 	defer response.Body.Close()
 
-	require.Equal(t, http.StatusCreated, response.StatusCode)
+	require.Equal(t, http.StatusCreated, response.StatusCode, "Значение response.StatusCode не совпадает с ожидаемым")
 
 	body, err := io.ReadAll(response.Body)
-	require.NoError(t, err)
+	require.NoError(t, err, "Операция должна завершиться без ошибки")
 
 	var result models.LoginOkResponse
-	require.NoError(t, json.Unmarshal(body, &result))
+	require.NoError(t, json.Unmarshal(body, &result), "Ответ API должен соответствовать JSON-модели")
 
 	return result
 }

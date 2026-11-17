@@ -14,6 +14,7 @@ import (
 	"api-tests-template/internal/managers/advertisements/models"
 )
 
+// HttpGetAdvertisements получает список объявлений по названию.
 func HttpGetAdvertisements(t *testing.T, token, textForSearch string) *http.Response {
 	t.Helper()
 
@@ -25,6 +26,7 @@ func HttpGetAdvertisements(t *testing.T, token, textForSearch string) *http.Resp
 		End().Response
 }
 
+// HttpPostAdvertisement отправляет multipart-запрос создания объявления.
 func HttpPostAdvertisement(t *testing.T, token string, request models.CreateAdvertisementRequest) *http.Response {
 	t.Helper()
 
@@ -37,10 +39,10 @@ func HttpPostAdvertisement(t *testing.T, token string, request models.CreateAdve
 
 	for _, photo := range request.Photos {
 		part, err := writer.CreateFormFile("photos", photo.Name)
-		require.NoError(t, err)
+		require.NoError(t, err, "Операция должна завершиться без ошибки")
 
 		_, err = part.Write(photo.Content)
-		require.NoError(t, err)
+		require.NoError(t, err, "Операция должна завершиться без ошибки")
 	}
 
 	require.NoError(t, writer.Close())
@@ -53,6 +55,7 @@ func HttpPostAdvertisement(t *testing.T, token string, request models.CreateAdve
 		End().Response
 }
 
+// HttpGetAdvertisement получает объявление по query-параметру id из Swagger.
 func HttpGetAdvertisement(t *testing.T, token, id string) *http.Response {
 	t.Helper()
 
@@ -63,6 +66,7 @@ func HttpGetAdvertisement(t *testing.T, token, id string) *http.Response {
 		End().Response
 }
 
+// HttpDeleteAdvertisement удаляет объявление по id.
 func HttpDeleteAdvertisement(t *testing.T, token, id string) *http.Response {
 	t.Helper()
 
@@ -73,6 +77,7 @@ func HttpDeleteAdvertisement(t *testing.T, token, id string) *http.Response {
 		End().Response
 }
 
+// HttpGetAdvertisementPhotos получает фотографии объявления.
 func HttpGetAdvertisementPhotos(t *testing.T, token, id string) *http.Response {
 	t.Helper()
 

@@ -24,21 +24,24 @@ const (
 	defaultQuantity    = "2"
 )
 
+// LoadEnvironment загружает настройки тестового окружения.
 func LoadEnvironment(t *testing.T) {
 	t.Helper()
 	base.SetupSuite()
 }
 
+// Login авторизует пользователя из локальных настроек.
 func Login(t *testing.T) authModels.LoginOkResponse {
 	t.Helper()
 	LoadEnvironment(t)
 
 	user := auth.Login(t, os.Getenv("TEST_LOGIN"), os.Getenv("TEST_PASSWORD"))
-	require.NotEmpty(t, user.Token)
-	require.NotEmpty(t, user.User.Id)
+	require.NotEmpty(t, user.Token, "Поле user.Token не должно быть пустым")
+	require.NotEmpty(t, user.User.Id, "Поле user.User.Id не должно быть пустым")
 	return user
 }
 
+// AdvertisementRequest готовит уникальное объявление со всеми полями.
 func AdvertisementRequest(t *testing.T) models.CreateAdvertisementRequest {
 	t.Helper()
 
@@ -55,6 +58,7 @@ func AdvertisementRequest(t *testing.T) models.CreateAdvertisementRequest {
 	}
 }
 
+// PNGPhoto создаёт небольшую PNG-фотографию для загрузки.
 func PNGPhoto(t *testing.T, name string, pixel color.RGBA) models.PhotoUpload {
 	t.Helper()
 
@@ -62,7 +66,7 @@ func PNGPhoto(t *testing.T, name string, pixel color.RGBA) models.PhotoUpload {
 	picture.SetRGBA(0, 0, pixel)
 
 	var photo bytes.Buffer
-	require.NoError(t, png.Encode(&photo, picture))
+	require.NoError(t, png.Encode(&photo, picture), "Не удалось подготовить PNG для загрузки")
 
 	return models.PhotoUpload{
 		Name:    name,

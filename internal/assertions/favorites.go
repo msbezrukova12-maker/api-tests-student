@@ -8,6 +8,7 @@ import (
 	"api-tests-template/internal/managers/favorites/models"
 )
 
+// FindFavoriteByAdvertisementID находит избранное по id объявления.
 func FindFavoriteByAdvertisementID(
 	t *testing.T,
 	items []models.Favorite,

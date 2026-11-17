@@ -8,6 +8,7 @@ import (
 	apiRunner "api-tests-template/internal/helpers/api-runner"
 )
 
+// HttpGetFavorites получает избранное пользователя.
 func HttpGetFavorites(t *testing.T, token string) *http.Response {
 	t.Helper()
 
@@ -17,6 +18,7 @@ func HttpGetFavorites(t *testing.T, token string) *http.Response {
 		End().Response
 }
 
+// HttpPostFavorite отправляет запрос добавления в избранное.
 func HttpPostFavorite(t *testing.T, token string, request any) *http.Response {
 	t.Helper()
 
@@ -28,6 +30,7 @@ func HttpPostFavorite(t *testing.T, token string, request any) *http.Response {
 		End().Response
 }
 
+// HttpDeleteFavorite удаляет объявление из избранного.
 func HttpDeleteFavorite(t *testing.T, token, advertisementID string) *http.Response {
 	t.Helper()
 

@@ -1,55 +1,67 @@
-# API-тесты для проекта https://testboard.avito.com/
+# API-тесты TestBoard — лабораторная Avito
 
-## Полезные ссылки
+Тесты работают с реальным [TestBoard](https://testboard.avito.com/).
+[Swagger](https://testboard.avito.com/swagger/index.html) — источник контрактов API.
 
-1. [Swagger-спецификация](https://testboard.avito.com/swagger/index.html)
-2. [Техническое задание](https://docs.google.com/document/d/1IZ9SxEcePoQT6lyEmukycp1qNok4HZtok73UQnPwKSA/edit?usp=sharing)
-3. [Библиотека для написания API-тестов](https://github.com/steinfletcher/apitest)
-4. [Мощная библиотека анализа JSON для Go](https://github.com/tidwall/gjson)
+## Подготовка
 
-## Запуск тестов
-
-1. Установите любое IDE для разработки: [Jetbrains GoLand](https://www.jetbrains.com/ru-ru/go/) (Платное или по студенческой лицензии), [VS Code](https://code.visualstudio.com/) (бесплатное).
-2. Установите [Git](https://git-scm.com/install/) на компьютер
-3. [Установите](https://go.dev/doc/install) Go версии 1.25.1
-4. [Настройте](https://docs.github.com/ru/authentication/connecting-to-github-with-ssh) доступ к своему Github-аккаунту
-   по SSH-ключу.
-5. Склонируйте себе репозиторий: `git clone <путь к вашему репозиторию>`
-6. Подтяните необходимые зависимости через команду в корне проекта:
+Нужны Git, Go 1.25.1 или новее и golangci-lint v2, собранный с поддержкой установленной версии Go.
+[Установка Go](https://go.dev/doc/install), [установка линтера](https://golangci-lint.run/docs/welcome/install/local/).
 
 ```bash
-   go mod tidy
+git clone https://github.com/msbezrukova12-maker/api-tests-student.git
+cd api-tests-student
+git switch main
+go mod download
 ```
 
-7. В файле `.env.override` (создайте его в корне, если нет) выставьте правильные значения для переменных окружения:
+Создайте в корне `.env.override` с данными зарегистрированного пользователя TestBoard:
 
-```
-TEST_LOGIN=your_login
+```dotenv
+TEST_LOGIN=your_email
 TEST_PASSWORD=your_password
 ```
 
-8. Для запуска всех тестов достаточно выполнить команду в корне проекта:
+Базовый адрес `API_URL=https://testboard.avito.com/api/v1` уже указан в `.env`.
+`.env.override` загружается после `.env` и исключён из Git. Не публикуйте логин, пароль и токены.
+Нужен сетевой доступ к TestBoard; для favorites тесты сами регистрируют отдельного пользователя через API.
+
+## Запуск
+
+Из корня репозитория:
 
 ```bash
-  go test -v ./...
+go test -p 1 -count=3 ./...
+golangci-lint run
 ```
 
-9. Отдельный пакет с тестами можно запустить командой:
+`-p 1` запускает пакеты последовательно, `-count=3` проверяет три повторения без кэша.
+Для подробного вывода шагов добавьте `-v`. Запуск отдельного сценария:
 
 ```bash
-  go test -v ./tests/scenarios/myAdvertisement/
+go test -p 1 -count=1 -v ./tests/scenarios/advertisementCreate -run '^TestCreateAdvertisementAllFields$'
 ```
 
-## Логирование
+Тесты выводят `Precondition`, `Step`, `Result`. Для отладки HTTP-запросов можно добавить
+`DEBUG=true` в `.env.override`. Такой вывод может содержать авторизационные данные, не публикуйте его.
 
-Для включения логирования request/response в консоль: выставьте переменную окружения `DEBUG=true` в
-`.env.override`
+## Покрытие и структура
 
-## Запуск линтера
+- Создание объявления со всеми полями и тремя фото, сравнение параметров через GET, поиск по полному title, получение фото.
+- Невалидные поля создания: обязательные поля, длина title/description, цена, quantity, отсутствие фото; точные `400`, `error`, `message`.
+- Отсутствующий и неверный токен: точные `401` и сообщения для создания и всех операций favorites.
+- Favorites: добавление, просмотр, удаление из списка, исчезновение после удаления самого объявления.
+- Несуществующее объявление: точные `404` и сообщения добавления/удаления.
+- POST favorites: `400` без обязательного ID, `403` для своего объявления, `409` при повторном добавлении.
+- Получение собственных объявлений с данными, созданными самим тестом, и проверка неверного токена.
 
-1. Установить приложение [golangci-lint](https://golangci-lint.run/docs/welcome/install/local/)
-2. Запуск линтера (из корня репозитория):
+Архитектура: HTTP-клиенты в `internal/client/http` → проверки и модели в `internal/managers` → сценарии в `tests/scenarios`.
+Общие данные и подготовка находятся в `tests/fixtures`, проверки полей — в `internal/assertions`.
 
-```bash
-  golangci-lint run
-```
+Фактический Swagger использует `GET /advertisement?id={id}` и `DELETE /advertisement?id={id}`;
+фото запрашиваются через `GET /advertisements/{id}/photos`. Это отличается от записи пути в тексте лабораторной.
+Статусы и сообщения сверены с TestBoard. Ошибки `5xx` приводят к падению, повторные попытки и пропуски их не скрывают.
+
+Каждый сценарий создаёт свои объявления с уникальными названиями и удаляет их через `t.Cleanup`.
+Favorites используют отдельного нового пользователя с пустым избранным, поэтому не затрагивают избранное основной учётной записи.
+API не предоставляет удаления пользователей: зарегистрированные тестовые учётные записи остаются на стенде.

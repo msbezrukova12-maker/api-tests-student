@@ -1,6 +1,7 @@
 package favorites
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,15 +13,19 @@ import (
 )
 
 func TestFavoritesOwnAdvertisement(t *testing.T) {
+	t.Log("Precondition: подготовка пользователя и тестовых данных")
 	_, viewer := fixtures.FavoritesUsers(t)
 	advertisement := advertisements.CreateAdvertisement(t, viewer.Token, fixtures.AdvertisementRequest(t))
 
-	_, response := manager.AddFavoriteExpectClientError(
+	t.Log("Step: пытаемся добавить своё объявление в избранное")
+	response := manager.AddFavoriteExpectStatus(
 		t,
 		viewer.Token,
 		models.AddFavoriteRequest{AdvertisementID: advertisement.ID},
+		http.StatusForbidden,
 	)
 
-	require.NotEmpty(t, response.Message)
-	require.Empty(t, manager.GetAllFavorites(t, viewer.Token))
+	fixtures.AssertError(t, response, "forbidden", "Cannot add own advertisement to favorites")
+	require.Empty(t, manager.GetAllFavorites(t, viewer.Token), "Избранное должно быть пустым после операции")
+	t.Log("Result: проверки сценария пройдены")
 }

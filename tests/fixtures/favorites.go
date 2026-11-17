@@ -11,6 +11,7 @@ import (
 	"api-tests-template/internal/utils"
 )
 
+// FavoritesUsers готовит владельца объявления и отдельного пользователя избранного.
 func FavoritesUsers(t *testing.T) (authModels.LoginOkResponse, authModels.LoginOkResponse) {
 	t.Helper()
 
@@ -22,9 +23,9 @@ func FavoritesUsers(t *testing.T) (authModels.LoginOkResponse, authModels.LoginO
 		FirstName: "Test",
 	})
 
-	require.NotEmpty(t, viewer.Token)
-	require.NotEmpty(t, viewer.User.Id)
-	require.NotEqual(t, owner.User.Id, viewer.User.Id)
+	require.NotEmpty(t, viewer.Token, "Поле viewer.Token не должно быть пустым")
+	require.NotEmpty(t, viewer.User.Id, "Поле viewer.User.Id не должно быть пустым")
+	require.NotEqual(t, owner.User.Id, viewer.User.Id, "Владелец и пользователь избранного должны различаться")
 
 	return owner, viewer
 }

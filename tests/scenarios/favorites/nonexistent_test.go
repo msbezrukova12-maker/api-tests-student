@@ -1,6 +1,7 @@
 package favorites
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,20 +13,24 @@ import (
 )
 
 func TestFavoritesNonexistentAdvertisement(t *testing.T) {
+	t.Log("Precondition: подготовка пользователя и тестовых данных")
 	owner, viewer := fixtures.FavoritesUsers(t)
 
 	advertisement := advertisements.CreateAdvertisement(t, owner.Token, fixtures.AdvertisementRequest(t))
 	advertisements.DeleteAdvertisement(t, owner.Token, advertisement.ID)
 
-	_, addError := manager.AddFavoriteExpectClientError(
+	t.Log("Step: добавляем и удаляем несуществующий ID")
+	addError := manager.AddFavoriteExpectStatus(
 		t,
 		viewer.Token,
 		models.AddFavoriteRequest{AdvertisementID: advertisement.ID},
+		http.StatusNotFound,
 	)
-	require.NotEmpty(t, addError.Message)
+	fixtures.AssertError(t, addError, "not_found", "Advertisement not found")
 
-	_, removeError := manager.RemoveFavoriteExpectClientError(t, viewer.Token, advertisement.ID)
-	require.NotEmpty(t, removeError.Message)
+	removeError := manager.RemoveFavoriteExpectStatus(t, viewer.Token, advertisement.ID, http.StatusNotFound)
+	fixtures.AssertError(t, removeError, "not_found", "Favorite entry not found")
 
-	require.Empty(t, manager.GetAllFavorites(t, viewer.Token))
+	require.Empty(t, manager.GetAllFavorites(t, viewer.Token), "Избранное должно быть пустым после операции")
+	t.Log("Result: проверки сценария пройдены")
 }
