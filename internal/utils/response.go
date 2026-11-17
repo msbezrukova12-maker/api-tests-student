@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
@@ -20,16 +19,4 @@ func ReadResponseBody(t *testing.T, response *http.Response) []byte {
 	require.NoError(t, err)
 
 	return body
-}
-
-func DecodeResponse[T any](t *testing.T, response *http.Response, expectedStatus int) T {
-	t.Helper()
-
-	body := ReadResponseBody(t, response)
-	require.Equal(t, expectedStatus, response.StatusCode, "response: %s", body)
-
-	var result T
-	require.NoError(t, json.Unmarshal(body, &result))
-
-	return result
 }
