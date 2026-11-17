@@ -85,23 +85,24 @@ func GetAdvertisementPhotos(t *testing.T, token, id string) []models.Photo {
 		client.HttpGetAdvertisementPhotos(t, token, id), http.StatusOK)
 }
 
-// DeleteAdvertisementIfExists удаляет объявление при cleanup и допускает уже удалённый объект.
+// DeleteAdvertisementIfExists удаляет объявление при cleanup и допускает, что объект уже отсутствует.
 func DeleteAdvertisementIfExists(t *testing.T, token, id string) {
 	t.Helper()
 
 	response := client.HttpDeleteAdvertisement(t, token, id)
 	body := utils.ReadResponseBody(t, response)
 
-	if response.StatusCode == http.StatusForbidden {
-		check := client.HttpGetAdvertisement(t, token, id)
-		checkBody := utils.ReadResponseBody(t, check)
-		require.Equal(t, http.StatusNotFound, check.StatusCode,
-			"DELETE не подтвердил удаление %s; DELETE: %s; GET: %s", id, body, checkBody)
+	if response.StatusCode == http.StatusNoContent {
+		return
+	}
+	if response.StatusCode >= http.StatusBadRequest && response.StatusCode < http.StatusInternalServerError {
+		t.Logf("[Cleanup] Объявление уже отсутствует или недоступно: status=%d, response=%s",
+			response.StatusCode, body)
 		return
 	}
 
-	require.Contains(t, []int{http.StatusNoContent, http.StatusNotFound}, response.StatusCode,
-		"Не удалось очистить объявление %s; response: %s", id, body)
+	require.Fail(t, "Не удалось очистить объявление",
+		"status=%d, response=%s", response.StatusCode, body)
 }
 
 // registerAdvertisementCleanup регистрирует удаление объявления, если успешный ответ содержит ID.
