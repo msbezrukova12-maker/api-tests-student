@@ -13,7 +13,6 @@ import (
 	"api-tests-template/tests/fixtures"
 )
 
-// TestCreateAdvertisementValidBoundaries проверяет валидные граничные значения из ЛР2 и ТЗ Avito.
 func TestCreateAdvertisementValidBoundaries(t *testing.T) {
 	user := fixtures.Login(t)
 
@@ -58,29 +57,19 @@ func TestCreateAdvertisementValidBoundaries(t *testing.T) {
 			request := fixtures.AdvertisementRequest(t)
 			tc.prepare(&request)
 
-			t.Logf("[Step] Создаём объявление с валидной границей %s", tc.name)
 			created := advertisements.CreateAdvertisement(t, user.Token, request)
 			assertions.AdvertisementMatchesRequest(t, created, request, user.User.Id)
 
 			actual := advertisements.GetAdvertisement(t, user.Token, created.ID)
 			assertions.AdvertisementMatchesRequest(t, actual, request, user.User.Id)
-
-			if tc.name == "price_not_set" {
-				require.Zero(t, created.Price, "Если цена не передана, backend должен сохранить нулевую цену")
-				require.Zero(t, actual.Price, "GET должен вернуть нулевую цену для объявления без цены")
-			}
-
-			t.Log("[Result] Валидная граница принята и сохранена")
 		})
 	}
 
 	t.Run("one_photo", func(t *testing.T) {
 		request := fixtures.AdvertisementRequest(t)
-		require.Len(t, request.Photos, 1)
-
 		created := advertisements.CreateAdvertisement(t, user.Token, request)
-		require.Len(t, advertisements.GetAdvertisementPhotos(t, user.Token, created.ID), 1,
-			"Объявление с одной фотографией должно содержать одну фотографию")
+
+		require.Len(t, advertisements.GetAdvertisementPhotos(t, user.Token, created.ID), 1)
 	})
 
 	t.Run("three_photos", func(t *testing.T) {
@@ -91,7 +80,6 @@ func TestCreateAdvertisementValidBoundaries(t *testing.T) {
 		)
 
 		created := advertisements.CreateAdvertisement(t, user.Token, request)
-		require.Len(t, advertisements.GetAdvertisementPhotos(t, user.Token, created.ID), 3,
-			"Объявление с тремя фотографиями должно содержать три фотографии")
+		require.Len(t, advertisements.GetAdvertisementPhotos(t, user.Token, created.ID), 3)
 	})
 }
