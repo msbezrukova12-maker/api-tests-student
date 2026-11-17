@@ -29,8 +29,7 @@ func CreateAdvertisement(t *testing.T, token string, request models.CreateAdvert
 	response := client.HttpPostAdvertisement(t, token, request)
 	body := utils.ReadResponseBody(t, response)
 
-	require.Contains(t, []int{http.StatusOK, http.StatusCreated}, response.StatusCode,
-		"response: %s", body)
+	require.Contains(t, []int{http.StatusOK, http.StatusCreated}, response.StatusCode, "response: %s", body)
 
 	registerAdvertisementCleanup(t, token, body)
 
@@ -67,11 +66,15 @@ func CreateAdvertisementExpectError(
 func GetAdvertisement(t *testing.T, token, id string) models.Advertisement {
 	t.Helper()
 
-	return utils.DecodeResponse[models.Advertisement](
-		t,
-		client.HttpGetAdvertisement(t, token, id),
-		http.StatusOK,
-	)
+	response := client.HttpGetAdvertisement(t, token, id)
+	body := utils.ReadResponseBody(t, response)
+
+	require.Equal(t, http.StatusOK, response.StatusCode, "response: %s", body)
+
+	var result models.Advertisement
+	require.NoError(t, json.Unmarshal(body, &result))
+
+	return result
 }
 
 func DeleteAdvertisement(t *testing.T, token, id string) {
@@ -86,11 +89,15 @@ func DeleteAdvertisement(t *testing.T, token, id string) {
 func GetAdvertisementPhotos(t *testing.T, token, id string) []models.Photo {
 	t.Helper()
 
-	return utils.DecodeResponse[[]models.Photo](
-		t,
-		client.HttpGetAdvertisementPhotos(t, token, id),
-		http.StatusOK,
-	)
+	response := client.HttpGetAdvertisementPhotos(t, token, id)
+	body := utils.ReadResponseBody(t, response)
+
+	require.Equal(t, http.StatusOK, response.StatusCode, "response: %s", body)
+
+	var result []models.Photo
+	require.NoError(t, json.Unmarshal(body, &result))
+
+	return result
 }
 
 func DeleteAdvertisementIfExists(t *testing.T, token, id string) {
