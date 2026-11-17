@@ -5,7 +5,6 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// RegisterRequest содержит поля, необходимые для регистрации тестового пользователя.
 type RegisterRequest struct {
 	Email     string `json:"email"`
 	Password  string `json:"password"`
