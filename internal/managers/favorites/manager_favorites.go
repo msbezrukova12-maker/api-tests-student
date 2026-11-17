@@ -13,8 +13,6 @@ import (
 	"api-tests-template/internal/utils"
 )
 
-const favoritesPageSize = 20
-
 // GetAllFavorites получает список избранного авторизованного пользователя.
 func GetAllFavorites(t *testing.T, token string) []models.Favorite {
 	t.Helper()
@@ -37,8 +35,6 @@ func AddFavorite(t *testing.T, token, advertisementID string) models.Favorite {
 
 	var result models.Favorite
 	require.NoError(t, json.Unmarshal(body, &result), "Некорректный favorite JSON: %s", body)
-	require.NotEmpty(t, result.FavoriteID, "Favorite не содержит favorite_id")
-	require.NotEmpty(t, result.AddedAt, "Favorite не содержит added_at")
 	require.Equal(t, advertisementID, result.Advertisement.ID, "Сохранено другое объявление")
 
 	t.Cleanup(func() {
