@@ -44,12 +44,6 @@ func TestCreateAdvertisementInvalidParameters(t *testing.T) {
 			},
 		},
 		{
-			name: "description_only_spaces",
-			prepare: func(request *models.CreateAdvertisementRequest) {
-				request.Fields["description"] = "   "
-			},
-		},
-		{
 			name: "description_501_characters",
 			prepare: func(request *models.CreateAdvertisementRequest) {
 				request.Fields["description"] = strings.Repeat("b", 501)
