@@ -13,31 +13,29 @@ import (
 	"api-tests-template/internal/utils"
 )
 
-// Login выполняет авторизацию пользователя и возвращает токен с данными пользователя, ожидает 200.
 func Login(t *testing.T, username, password string) models.LoginOkResponse {
 	t.Helper()
-	require.NotEmpty(t, username, "Отсутствует логин пользователя")
-	require.NotEmpty(t, password, "Отсутствует пароль пользователя")
+
+	require.NotEmpty(t, username)
+	require.NotEmpty(t, password)
 
 	request := models.LoginRequest{
 		Email:    username,
 		Password: password,
 	}
 
-	loginRawResponse := auth.HttpPostAuthLogin(t, request)
-	defer loginRawResponse.Body.Close()
+	response := auth.HttpPostAuthLogin(t, request)
+	defer response.Body.Close()
 
-	respArray, errResponse := io.ReadAll(loginRawResponse.Body)
-	require.NoError(t, errResponse)
-
-	loginResponse := models.LoginOkResponse{}
-	err := json.Unmarshal(respArray, &loginResponse)
+	body, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
-	return loginResponse
+	var result models.LoginOkResponse
+	require.NoError(t, json.Unmarshal(body, &result))
+
+	return result
 }
 
-// RegisterOrLogin создаёт отдельного тестового пользователя через регистрацию TestBoard или логинит уже созданного.
 func RegisterOrLogin(t *testing.T, request models.RegisterRequest) models.LoginOkResponse {
 	t.Helper()
 
@@ -46,11 +44,9 @@ func RegisterOrLogin(t *testing.T, request models.RegisterRequest) models.LoginO
 
 	if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
 		var result models.LoginOkResponse
-		require.NoError(t, json.Unmarshal(body, &result), "Некорректный JSON регистрации: %s", body)
+		require.NoError(t, json.Unmarshal(body, &result))
 		return result
 	}
 
-	t.Logf("[Precondition] Регистрация не создала нового пользователя, пробуем логин; register status=%d",
-		response.StatusCode)
 	return Login(t, request.Email, request.Password)
 }
