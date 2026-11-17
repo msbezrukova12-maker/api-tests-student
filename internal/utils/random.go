@@ -8,15 +8,16 @@ import (
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-// RandomString генерирует криптографически случайную строку заданной длины.
 func RandomString(length int) string {
 	b := make([]byte, length)
+
 	for i := range b {
-		randCharsetIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		index, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
 		if err != nil {
-			panic(fmt.Sprintf("Не удалось сгенерировать случайное число: %s", err.Error()))
+			panic(fmt.Sprintf("Не удалось сгенерировать случайную строку: %s", err))
 		}
-		b[i] = charset[randCharsetIndex.Int64()]
+
+		b[i] = charset[index.Int64()]
 	}
 
 	return string(b)
