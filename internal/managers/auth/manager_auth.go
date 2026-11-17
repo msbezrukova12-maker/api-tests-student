@@ -10,22 +10,36 @@ import (
 
 	"api-tests-template/internal/client/http/auth"
 	"api-tests-template/internal/managers/auth/models"
-	"api-tests-template/internal/utils"
 )
 
+// Login выполняет авторизацию пользователя и возвращает токен с данными пользователя, ожидает 200
 func Login(t *testing.T, username, password string) models.LoginOkResponse {
-	t.Helper()
-
-	require.NotEmpty(t, username)
-	require.NotEmpty(t, password)
+	require.NotEmpty(t, username, "Отсутствует логин пользователя")
+	require.NotEmpty(t, password, "Отсутствует пароль пользователя")
 
 	request := models.LoginRequest{
 		Email:    username,
 		Password: password,
 	}
 
-	response := auth.HttpPostAuthLogin(t, request)
+	loginRawResponse := auth.HttpPostAuthLogin(t, request)
+	defer loginRawResponse.Body.Close()
+
+	respArray, errResponse := io.ReadAll(loginRawResponse.Body)
+	require.NoError(t, errResponse)
+
+	loginResponse := models.LoginOkResponse{}
+	err := json.Unmarshal(respArray, &loginResponse)
+	require.NoError(t, err)
+
+	return loginResponse
+}
+
+func Register(t *testing.T, request models.RegisterRequest) models.LoginOkResponse {
+	response := auth.HttpPostAuthRegister(t, request)
 	defer response.Body.Close()
+
+	require.Equal(t, http.StatusCreated, response.StatusCode)
 
 	body, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
@@ -34,19 +48,4 @@ func Login(t *testing.T, username, password string) models.LoginOkResponse {
 	require.NoError(t, json.Unmarshal(body, &result))
 
 	return result
-}
-
-func RegisterOrLogin(t *testing.T, request models.RegisterRequest) models.LoginOkResponse {
-	t.Helper()
-
-	response := auth.HttpPostAuthRegister(t, request)
-	body := utils.ReadResponseBody(t, response)
-
-	if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
-		var result models.LoginOkResponse
-		require.NoError(t, json.Unmarshal(body, &result))
-		return result
-	}
-
-	return Login(t, request.Email, request.Password)
 }
