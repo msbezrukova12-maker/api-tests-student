@@ -15,26 +15,13 @@ import (
 
 const favoritesPageSize = 20
 
-// GetAllFavorites получает все страницы избранного и проверяет корректность пагинации.
+// GetAllFavorites получает список избранного авторизованного пользователя.
 func GetAllFavorites(t *testing.T, token string) []models.Favorite {
 	t.Helper()
 
-	var items []models.Favorite
-	for page := 1; ; page++ {
-		response := utils.DecodeResponse[models.FavoritesList](t,
-			client.HttpGetFavorites(t, token, page, favoritesPageSize), http.StatusOK)
-
-		require.Equal(t, page, response.Page, "API вернул неправильный номер страницы")
-		require.Equal(t, favoritesPageSize, response.PageSize, "API вернул неправильный page_size")
-		items = append(items, response.Items...)
-
-		if page >= response.TotalPages {
-			require.Len(t, items, response.Total, "Пагинация потеряла или продублировала элементы")
-			return items
-		}
-
-		require.NotEmpty(t, response.Items, "Получена пустая страница до последней")
-	}
+	response := utils.DecodeResponse[models.FavoritesList](t,
+		client.HttpGetFavorites(t, token), http.StatusOK)
+	return response.Items
 }
 
 // AddFavorite добавляет объявление в избранное и регистрирует cleanup.
@@ -156,7 +143,7 @@ func RemoveFavoriteExpectClientError(
 func GetFavoritesExpectStatus(t *testing.T, token string, expectedStatus int) apiModels.ErrorResponse {
 	t.Helper()
 
-	response := client.HttpGetFavorites(t, token, 1, favoritesPageSize)
+	response := client.HttpGetFavorites(t, token)
 	return decodeFavoriteError(t, response, expectedStatus)
 }
 
