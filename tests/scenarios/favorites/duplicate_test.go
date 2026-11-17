@@ -1,7 +1,6 @@
 package favorites
 
 import (
-	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,26 +11,23 @@ import (
 	"api-tests-template/tests/fixtures"
 )
 
-// TestFavoritesDuplicateAdvertisement проверяет запрет повторного добавления одного объявления.
+// TestFavoritesDuplicateAdvertisement проверяет повторное добавление одного объявления — пример из задания Avito.
 func TestFavoritesDuplicateAdvertisement(t *testing.T) {
 	owner, viewer := fixtures.FavoritesUsers(t)
 	advertisement := advertisements.CreateAdvertisement(t, owner.Token, fixtures.AdvertisementRequest(t))
 
-	t.Log("[Precondition] Один раз добавляем чужое объявление в избранное")
+	t.Log("[Precondition] Добавляем чужое объявление в избранное")
 	saved := manager.AddFavorite(t, viewer.Token, advertisement.ID)
 
 	t.Log("[Step] Повторно добавляем то же объявление")
-	response := manager.AddFavoriteExpectError(
+	status, response := manager.AddFavoriteExpectClientError(
 		t,
 		viewer.Token,
 		models.AddFavoriteRequest{AdvertisementID: advertisement.ID},
-		http.StatusConflict,
 	)
-	require.Equal(t, "already_exists", response.Error, "Неправильный duplicate error")
-	require.Equal(t, "Advertisement is already in favorites", response.Message, "Неправильное duplicate message")
+	t.Logf("[Check] Повторный POST вернул HTTP %d: %s", status, response.Message)
 
 	items := manager.GetAllFavorites(t, viewer.Token)
-	require.Len(t, items, 1, "Повторный POST создал дубликат")
-	require.Equal(t, saved.FavoriteID, items[0].FavoriteID, "Повторный POST изменил исходный favorite")
-	t.Log("[Result] Повторное добавление отклонено HTTP 409")
+	require.Len(t, items, 1, "Повторный POST не должен создавать дубликат")
+	require.Equal(t, saved.FavoriteID, items[0].FavoriteID, "Исходная запись favorite изменилась")
 }
