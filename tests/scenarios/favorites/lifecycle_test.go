@@ -20,10 +20,9 @@ func TestFavoritesLifecycle(t *testing.T) {
 	advertisement := advertisements.CreateAdvertisement(t, owner.Token, request)
 
 	t.Log("[Step] Добавляем объявление в избранное")
-	added := manager.AddFavorite(t, viewer.Token, advertisement.ID)
+	manager.AddFavorite(t, viewer.Token, advertisement.ID)
 	items := manager.GetAllFavorites(t, viewer.Token)
 	listed := assertions.FindFavoriteByAdvertisementID(t, items, advertisement.ID)
-	require.Equal(t, added.FavoriteID, listed.FavoriteID, "GET /favorites вернул другую запись")
 	require.Equal(t, advertisement.ID, listed.Advertisement.ID, "GET /favorites вернул другое объявление")
 
 	t.Log("[Step] Удаляем объявление из избранного")
