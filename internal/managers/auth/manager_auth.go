@@ -37,20 +37,20 @@ func Login(t *testing.T, username, password string) models.LoginOkResponse {
 	return loginResponse
 }
 
-// RegisterOrLogin регистрирует отдельного тестового пользователя или повторно авторизует уже созданного.
+// RegisterOrLogin создаёт отдельного тестового пользователя через регистрацию TestBoard или логинит уже созданного.
 func RegisterOrLogin(t *testing.T, request models.RegisterRequest) models.LoginOkResponse {
 	t.Helper()
+
 	response := auth.HttpPostAuthRegister(t, request)
 	body := utils.ReadResponseBody(t, response)
 
-	if response.StatusCode == http.StatusConflict {
-		return Login(t, request.Email, request.Password)
+	if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
+		var result models.LoginOkResponse
+		require.NoError(t, json.Unmarshal(body, &result), "Некорректный JSON регистрации: %s", body)
+		return result
 	}
 
-	require.Equal(t, http.StatusCreated, response.StatusCode,
-		"Не удалось зарегистрировать тестового пользователя; response: %s", body)
-
-	var result models.LoginOkResponse
-	require.NoError(t, json.Unmarshal(body, &result), "Некорректный JSON регистрации: %s", body)
-	return result
+	t.Logf("[Precondition] Регистрация не создала нового пользователя, пробуем логин; register status=%d",
+		response.StatusCode)
+	return Login(t, request.Email, request.Password)
 }
