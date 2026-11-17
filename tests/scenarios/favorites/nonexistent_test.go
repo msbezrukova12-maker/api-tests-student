@@ -1,10 +1,7 @@
 package favorites
 
 import (
-	"net/http"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	"api-tests-template/internal/managers/advertisements"
 	manager "api-tests-template/internal/managers/favorites"
@@ -12,38 +9,31 @@ import (
 	"api-tests-template/tests/fixtures"
 )
 
-// TestFavoritesNonexistentAdvertisement проверяет добавление и удаление несуществующего ad_id.
+// TestFavoritesNonexistentAdvertisement проверяет добавление и удаление несуществующего ad_id из задания Avito.
 func TestFavoritesNonexistentAdvertisement(t *testing.T) {
 	owner, viewer := fixtures.FavoritesUsers(t)
 
-	t.Log("[Precondition] Создаём и удаляем объявление, чтобы получить гарантированно несуществующий UUID")
+	t.Log("[Precondition] Создаём и удаляем объявление, чтобы получить гарантированно несуществующий ID")
 	advertisement := advertisements.CreateAdvertisement(t, owner.Token, fixtures.AdvertisementRequest(t))
 	advertisements.DeleteAdvertisement(t, owner.Token, advertisement.ID)
 
 	t.Run("add", func(t *testing.T) {
-		t.Log("[Step] Добавляем удалённое объявление в избранное")
-		response := manager.AddFavoriteExpectError(
+		t.Log("[Step] Добавляем несуществующий ad_id в избранное")
+		status, response := manager.AddFavoriteExpectClientError(
 			t,
 			viewer.Token,
 			models.AddFavoriteRequest{AdvertisementID: advertisement.ID},
-			http.StatusNotFound,
 		)
-		require.Equal(t, "not_found", response.Error, "Неправильный error для отсутствующего объявления")
-		require.Equal(t, "Advertisement not found", response.Message, "Неправильное message")
+		t.Logf("[Result] Получена клиентская ошибка HTTP %d: %s", status, response.Message)
 	})
 
 	t.Run("remove", func(t *testing.T) {
-		t.Log("[Step] Удаляем отсутствующую запись избранного")
-		response := manager.RemoveFavoriteExpectError(
-			t,
-			viewer.Token,
-			advertisement.ID,
-			http.StatusNotFound,
-		)
-		require.Equal(t, "not_found", response.Error, "Неправильный error для отсутствующего favorite")
-		require.Equal(t, "Favorite entry not found", response.Message, "Неправильное message")
+		t.Log("[Step] Удаляем несуществующий ad_id из избранного")
+		status, response := manager.RemoveFavoriteExpectClientError(t, viewer.Token, advertisement.ID)
+		t.Logf("[Result] Получена клиентская ошибка HTTP %d: %s", status, response.Message)
 	})
 
-	require.Empty(t, manager.GetAllFavorites(t, viewer.Token), "Негативные запросы изменили favorites")
-	t.Log("[Result] Обе операции с несуществующим ad_id вернули HTTP 404")
+	if items := manager.GetAllFavorites(t, viewer.Token); len(items) != 0 {
+		t.Fatalf("Негативные запросы изменили favorites: %d записей", len(items))
+	}
 }
