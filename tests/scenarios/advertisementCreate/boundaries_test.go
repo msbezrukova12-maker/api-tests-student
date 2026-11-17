@@ -64,6 +64,12 @@ func TestCreateAdvertisementValidBoundaries(t *testing.T) {
 
 			actual := advertisements.GetAdvertisement(t, user.Token, created.ID)
 			assertions.AdvertisementMatchesRequest(t, actual, request, user.User.Id)
+
+			if tc.name == "price_not_set" {
+				require.Zero(t, created.Price, "Если цена не передана, backend должен сохранить нулевую цену")
+				require.Zero(t, actual.Price, "GET должен вернуть нулевую цену для объявления без цены")
+			}
+
 			t.Log("[Result] Валидная граница принята и сохранена")
 		})
 	}
