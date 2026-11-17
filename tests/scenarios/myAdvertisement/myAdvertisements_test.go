@@ -21,17 +21,16 @@ func TestGetMyAdvertisements(t *testing.T) {
 
 	t.Log("Step: получаем список собственных объявлений")
 	body := myAdvertisements.GetMyAdvertisements(t, user.Token, http.StatusOK, pageLimit)
-	ids := gjson.Get(body, "items.#.id").Array()
+	items := gjson.Get(body, "items").Array()
 	found := false
-	for _, id := range ids {
-		if id.String() == created.ID {
+	for _, item := range items {
+		require.Equal(t, user.User.Id, item.Get("user_id").String(), "В списке собственных объявлений найдено чужое")
+		if item.Get("id").String() == created.ID {
 			found = true
-			break
 		}
 	}
 	require.True(t, found, "Созданное объявление %s отсутствует в собственных объявлениях", created.ID)
 	t.Log("Result: созданное объявление найдено в профиле")
-	t.Log("Result: проверки сценария пройдены")
 }
 
 func TestGetMyAdvertisementsIncorrectToken(t *testing.T) {
@@ -42,5 +41,4 @@ func TestGetMyAdvertisementsIncorrectToken(t *testing.T) {
 	require.Equal(t, fixtures.UnauthorizedError, gjson.Get(body, "error").String(), "Некорректный error авторизации")
 	require.Equal(t, fixtures.InvalidAuthorizationMessage, gjson.Get(body, "message").String(), "Некорректный message авторизации")
 	t.Log("Result: получена точная ошибка авторизации")
-	t.Log("Result: проверки сценария пройдены")
 }

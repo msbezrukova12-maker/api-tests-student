@@ -6,12 +6,14 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"time"
 
 	"github.com/steinfletcher/apitest"
 )
 
 const (
 	defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+	requestTimeout   = 30 * time.Second
 )
 
 type ApiTest struct {
@@ -37,8 +39,17 @@ func (at *ApiTest) Auth(token string) *ApiTest {
 	return at
 }
 
+// Create настраивает HTTP-запрос к тестовому стенду.
 func (at *ApiTest) Create() *apitest.APITest {
-	apitestNew := apitest.New().EnableNetworking()
+	// Отдельное соединение исключает повторное использование закрытого сервером сокета.
+	client := &http.Client{
+		Timeout: requestTimeout,
+		Transport: &http.Transport{
+			Proxy:             http.ProxyFromEnvironment,
+			DisableKeepAlives: true,
+		},
+	}
+	apitestNew := apitest.New().EnableNetworking(client)
 	if os.Getenv("DEBUG") == "true" {
 		apitestNew = apitestNew.Debug()
 	}
