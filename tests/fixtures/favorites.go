@@ -19,7 +19,7 @@ func FavoritesUsers(t *testing.T) (authModels.LoginOkResponse, authModels.LoginO
 
 	request := authModels.RegisterRequest{
 		Email:     strings.ToLower(utils.RandomString(12)) + "@example.com",
-		Password:  "TestPassword123!",
+		Password:  "Aa1!" + utils.RandomString(12),
 		FirstName: "Test",
 	}
 
