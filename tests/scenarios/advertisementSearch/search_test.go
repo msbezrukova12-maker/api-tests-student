@@ -4,17 +4,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"api-tests-template/internal/assertions"
 	"api-tests-template/internal/managers/advertisements"
 	"api-tests-template/internal/utils"
 	"api-tests-template/tests/fixtures"
 )
 
-// TestSearchByTitle проверяет позицию подстроки и регистронезависимость поиска.
 func TestSearchByTitle(t *testing.T) {
 	user := fixtures.Login(t)
 
-	t.Log("[Precondition] Создаём независимое объявление для проверки поиска")
 	request := fixtures.AdvertisementRequest(t)
 	request.Fields["title"] = "SearchStart " + utils.RandomString(8) + " SearchMiddle SearchEnd"
 	created := advertisements.CreateAdvertisement(t, user.Token, request)
@@ -33,14 +33,9 @@ func TestSearchByTitle(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Logf("[Step] Ищем объявление по строке %q", tc.search)
 			list := advertisements.GetAdvertisementsList(t, user.Token, tc.search)
 			found := assertions.FindAdvertisementByID(t, list.Items, created.ID)
-			if found.Title != request.Fields["title"] {
-				t.Fatalf("Найдено объявление с неправильным title: got=%q want=%q",
-					found.Title, request.Fields["title"])
-			}
-			t.Log("[Result] Созданное объявление найдено")
+			require.Equal(t, request.Fields["title"], found.Title)
 		})
 	}
 }
