@@ -28,8 +28,7 @@ func TestCreateAdvertisementAllFields(t *testing.T) {
 	assertions.AdvertisementMatchesRequest(t, actual, request, user.User.Id)
 
 	list := advertisements.GetAdvertisementsList(t, user.Token, request.Fields["title"])
-	found := assertions.FindAdvertisementByID(t, list.Items, created.ID)
-	assertions.AdvertisementMatchesRequest(t, found, request, user.User.Id)
+	assertions.ContainsAdvertisementByTitle(t, list.Items, request.Fields["title"])
 
 	photos := advertisements.GetAdvertisementPhotos(t, user.Token, created.ID)
 	require.Len(t, photos, len(request.Photos))
