@@ -8,7 +8,6 @@ import (
 	"api-tests-template/internal/managers/favorites/models"
 )
 
-// FindFavoriteByAdvertisementID возвращает запись избранного для указанного объявления.
 func FindFavoriteByAdvertisementID(
 	t *testing.T,
 	items []models.Favorite,
@@ -22,7 +21,6 @@ func FindFavoriteByAdvertisementID(
 		}
 	}
 
-	require.FailNow(t, "Favorite не найден",
-		"Ожидали advertisement_id=%s среди %d записей", advertisementID, len(items))
+	require.FailNow(t, "Favorite не найден", "advertisement_id=%s", advertisementID)
 	return models.Favorite{}
 }
