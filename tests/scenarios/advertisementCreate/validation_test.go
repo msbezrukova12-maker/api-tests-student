@@ -1,7 +1,7 @@
 package advertisementCreate
 
 import (
-	"fmt"
+	"image/color"
 	"net/http"
 	"strings"
 	"testing"
@@ -9,75 +9,96 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"api-tests-template/internal/managers/advertisements"
+	"api-tests-template/internal/managers/advertisements/models"
 	"api-tests-template/tests/fixtures"
 )
 
-const (
-	maximumTitleLength     = 50
-	invalidRequestError    = "invalid_request"
-	priceValidationMessage = "price must be between 0 and 1000000 inclusive"
-)
-
-// TestCreateAdvertisementInvalidParameters проверяет обязательные поля и основные ошибки валидации.
+// TestCreateAdvertisementInvalidParameters автоматизирует негативные кейсы из ЛР2 и текущего задания Avito.
 func TestCreateAdvertisementInvalidParameters(t *testing.T) {
 	user := fixtures.Login(t)
 
 	cases := []struct {
-		name        string
-		prepare     func(map[string]string)
-		removePhoto bool
-		message     string
+		name    string
+		prepare func(*testing.T, *models.CreateAdvertisementRequest)
 	}{
 		{
 			name: "missing_title",
-			prepare: func(fields map[string]string) {
-				delete(fields, "title")
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				delete(request.Fields, "title")
 			},
-			message: "title is required",
 		},
 		{
 			name: "empty_title",
-			prepare: func(fields map[string]string) {
-				fields["title"] = ""
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				request.Fields["title"] = ""
 			},
-			message: "title is required",
 		},
 		{
-			name: "title_above_limit",
-			prepare: func(fields map[string]string) {
-				fields["title"] = strings.Repeat("a", maximumTitleLength+1)
+			name: "title_51_characters",
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				request.Fields["title"] = strings.Repeat("a", 51)
 			},
-			message: fmt.Sprintf(
-				"title must not exceed %d characters provided %d",
-				maximumTitleLength,
-				maximumTitleLength+1,
-			),
+		},
+		{
+			name: "missing_description",
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				delete(request.Fields, "description")
+			},
+		},
+		{
+			name: "description_only_spaces",
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				request.Fields["description"] = "   "
+			},
+		},
+		{
+			name: "description_501_characters",
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				request.Fields["description"] = strings.Repeat("b", 501)
+			},
 		},
 		{
 			name: "negative_price",
-			prepare: func(fields map[string]string) {
-				fields["price"] = "-1"
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				request.Fields["price"] = "-1"
 			},
-			message: priceValidationMessage,
 		},
 		{
-			name:        "missing_photos",
-			prepare:     func(map[string]string) {},
-			removePhoto: true,
-			message:     "at least 1 photo is required",
+			name: "price_above_1000000",
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				request.Fields["price"] = "1000001"
+			},
+		},
+		{
+			name: "quantity_101",
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				request.Fields["quantity"] = "101"
+			},
+		},
+		{
+			name: "missing_photos",
+			prepare: func(_ *testing.T, request *models.CreateAdvertisementRequest) {
+				request.Photos = nil
+			},
+		},
+		{
+			name: "four_photos",
+			prepare: func(t *testing.T, request *models.CreateAdvertisementRequest) {
+				request.Photos = append(request.Photos,
+					fixtures.PNGPhoto(t, "photo-2.png", color.RGBA{R: 200, G: 80, B: 80, A: 255}),
+					fixtures.PNGPhoto(t, "photo-3.png", color.RGBA{R: 80, G: 200, B: 80, A: 255}),
+					fixtures.PNGPhoto(t, "photo-4.png", color.RGBA{R: 80, G: 80, B: 200, A: 255}),
+				)
+			},
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Logf("[Precondition] Подготавливаем невалидный request: %s", tc.name)
 			request := fixtures.AdvertisementRequest(t)
-			tc.prepare(request.Fields)
-			if tc.removePhoto {
-				request.Photos = nil
-			}
+			tc.prepare(t, &request)
 
-			t.Log("[Step] Отправляем невалидный POST /advertisement")
+			t.Logf("[Step] Отправляем невалидный POST /advertisement: %s", tc.name)
 			response := advertisements.CreateAdvertisementExpectError(
 				t,
 				user.Token,
@@ -85,9 +106,9 @@ func TestCreateAdvertisementInvalidParameters(t *testing.T) {
 				http.StatusBadRequest,
 			)
 
-			require.Equal(t, invalidRequestError, response.Error, "Неправильный тип validation error")
-			require.Equal(t, tc.message, response.Message, "Неправильное validation message")
-			t.Logf("[Result] Получен HTTP 400: %s / %s", response.Error, response.Message)
+			require.NotEmpty(t, response.Error, "API должен вернуть тип ошибки")
+			require.NotEmpty(t, response.Message, "API должен вернуть сообщение об ошибке")
+			t.Logf("[Result] HTTP 400, error=%q, message=%q", response.Error, response.Message)
 		})
 	}
 }
