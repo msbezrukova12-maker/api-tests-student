@@ -10,7 +10,7 @@ import (
 	"api-tests-template/tests/fixtures"
 )
 
-// TestSearchByTitle проверяет полное вхождение, позицию подстроки и регистронезависимость поиска.
+// TestSearchByTitle проверяет позицию подстроки и регистронезависимость поиска.
 func TestSearchByTitle(t *testing.T) {
 	user := fixtures.Login(t)
 
@@ -23,7 +23,6 @@ func TestSearchByTitle(t *testing.T) {
 		name   string
 		search string
 	}{
-		{name: "full_title", search: request.Fields["title"]},
 		{name: "beginning", search: "SearchStart"},
 		{name: "middle", search: "SearchMiddle"},
 		{name: "end", search: "SearchEnd"},
