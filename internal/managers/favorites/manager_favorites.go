@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 
 	client "api-tests-template/internal/client/http/favorites"
 	apiModels "api-tests-template/internal/managers/advertisements/models"
@@ -176,7 +175,3 @@ func decodeFavoriteError(t *testing.T, response *http.Response, expectedStatus i
 	return result
 }
 
-// favoriteAdvertisementID извлекает advertisement ID из успешного ответа POST /favorites.
-func favoriteAdvertisementID(body []byte) string {
-	return gjson.GetBytes(body, "advertisement.id").String()
-}
