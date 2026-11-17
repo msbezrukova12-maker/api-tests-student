@@ -8,7 +8,6 @@ import (
 
 	"api-tests-template/internal/managers/auth"
 	authModels "api-tests-template/internal/managers/auth/models"
-	"api-tests-template/internal/managers/favorites"
 	"api-tests-template/internal/utils"
 )
 
@@ -27,19 +26,5 @@ func FavoritesUsers(t *testing.T) (authModels.LoginOkResponse, authModels.LoginO
 	require.NotEmpty(t, viewer.User.Id)
 	require.NotEqual(t, owner.User.Id, viewer.User.Id)
 
-	cleanFavorites(t, viewer.Token)
-
-	t.Cleanup(func() {
-		cleanFavorites(t, viewer.Token)
-	})
-
 	return owner, viewer
-}
-
-func cleanFavorites(t *testing.T, token string) {
-	t.Helper()
-
-	for _, item := range favorites.GetAllFavorites(t, token) {
-		favorites.RemoveFavoriteIfExists(t, token, item.Advertisement.ID)
-	}
 }
