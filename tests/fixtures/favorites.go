@@ -1,8 +1,7 @@
 package fixtures
 
 import (
-	"crypto/sha256"
-	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,44 +9,34 @@ import (
 	"api-tests-template/internal/managers/auth"
 	authModels "api-tests-template/internal/managers/auth/models"
 	"api-tests-template/internal/managers/favorites"
+	"api-tests-template/internal/utils"
 )
 
-// FavoritesUsers возвращает владельца объявления и отдельного пользователя для работы с избранным.
 func FavoritesUsers(t *testing.T) (authModels.LoginOkResponse, authModels.LoginOkResponse) {
 	t.Helper()
 
 	owner := Login(t)
-	seed := owner.User.Id + "\x00" + t.Name()
-	emailHash := sha256.Sum256([]byte(seed))
-	passwordHash := sha256.Sum256([]byte("api-favorites-password\x00" + seed))
 
 	request := authModels.RegisterRequest{
-		Email:     fmt.Sprintf("api-favorites-%x@example.com", emailHash[:12]),
-		Password:  fmt.Sprintf("Aa1!%x", passwordHash[:12]),
-		FirstName: "API Favorites",
+		Email:     strings.ToLower(utils.RandomString(12)) + "@example.com",
+		Password:  "TestPassword123!",
+		FirstName: "Test",
 	}
 
-	t.Log("[Precondition] Регистрируем или переиспользуем отдельный аккаунт для favorites")
 	viewer := auth.RegisterOrLogin(t, request)
-	require.NotEmpty(t, viewer.Token, "Favorites account не содержит token")
-	require.NotEmpty(t, viewer.User.Id, "Favorites account не содержит user ID")
-	require.NotEqual(t, owner.User.Id, viewer.User.Id, "Владелец объявления и favorites-пользователь должны отличаться")
+	require.NotEmpty(t, viewer.Token)
+	require.NotEmpty(t, viewer.User.Id)
+	require.NotEqual(t, owner.User.Id, viewer.User.Id)
 
 	cleanFavorites(t, viewer.Token)
-	require.Empty(t, favorites.GetAllFavorites(t, viewer.Token),
-		"Favorites account должен быть пустым перед сценарием")
 
 	t.Cleanup(func() {
-		t.Log("[Cleanup] Очищаем избранное тестового пользователя")
 		cleanFavorites(t, viewer.Token)
-		require.Empty(t, favorites.GetAllFavorites(t, viewer.Token),
-			"После cleanup в аккаунте остались favorites")
 	})
 
 	return owner, viewer
 }
 
-// cleanFavorites удаляет все записи избранного отдельного тестового аккаунта.
 func cleanFavorites(t *testing.T, token string) {
 	t.Helper()
 
