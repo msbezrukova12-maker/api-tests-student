@@ -24,27 +24,24 @@ const (
 	defaultQuantity    = "2"
 )
 
-// LoadEnvironment загружает общие настройки API без обязательной авторизации.
 func LoadEnvironment(t *testing.T) {
 	t.Helper()
 	base.SetupSuite()
 }
 
-// Login загружает окружение и авторизует пользователя из TEST_LOGIN/TEST_PASSWORD.
 func Login(t *testing.T) authModels.LoginOkResponse {
 	t.Helper()
 	LoadEnvironment(t)
 
-	t.Log("[Precondition] Авторизуем пользователя из переменных окружения")
 	user := auth.Login(t, os.Getenv("TEST_LOGIN"), os.Getenv("TEST_PASSWORD"))
-	require.NotEmpty(t, user.Token, "Login response не содержит token")
-	require.NotEmpty(t, user.User.Id, "Login response не содержит user ID")
+	require.NotEmpty(t, user.Token)
+	require.NotEmpty(t, user.User.Id)
 	return user
 }
 
-// AdvertisementRequest создаёт независимый валидный запрос объявления с уникальным title и PNG-фотографией.
 func AdvertisementRequest(t *testing.T) models.CreateAdvertisementRequest {
 	t.Helper()
+
 	return models.CreateAdvertisementRequest{
 		Fields: map[string]string{
 			"title":       "API test " + utils.RandomString(randomTitleLength),
@@ -58,7 +55,6 @@ func AdvertisementRequest(t *testing.T) models.CreateAdvertisementRequest {
 	}
 }
 
-// PNGPhoto генерирует небольшое PNG-изображение без внешнего fixture-файла.
 func PNGPhoto(t *testing.T, name string, pixel color.RGBA) models.PhotoUpload {
 	t.Helper()
 
@@ -66,6 +62,10 @@ func PNGPhoto(t *testing.T, name string, pixel color.RGBA) models.PhotoUpload {
 	picture.SetRGBA(0, 0, pixel)
 
 	var photo bytes.Buffer
-	require.NoError(t, png.Encode(&photo, picture), "Не удалось подготовить PNG fixture")
-	return models.PhotoUpload{Name: name, Content: photo.Bytes()}
+	require.NoError(t, png.Encode(&photo, picture))
+
+	return models.PhotoUpload{
+		Name:    name,
+		Content: photo.Bytes(),
+	}
 }
