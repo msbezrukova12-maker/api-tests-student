@@ -17,13 +17,12 @@ func FavoritesUsers(t *testing.T) (authModels.LoginOkResponse, authModels.LoginO
 
 	owner := Login(t)
 
-	request := authModels.RegisterRequest{
+	viewer := auth.Register(t, authModels.RegisterRequest{
 		Email:     strings.ToLower(utils.RandomString(12)) + "@example.com",
 		Password:  "Aa1!" + utils.RandomString(12),
 		FirstName: "Test",
-	}
+	})
 
-	viewer := auth.RegisterOrLogin(t, request)
 	require.NotEmpty(t, viewer.Token)
 	require.NotEmpty(t, viewer.User.Id)
 	require.NotEqual(t, owner.User.Id, viewer.User.Id)
