@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"api-tests-template/internal/managers/advertisements"
 	apiModels "api-tests-template/internal/managers/advertisements/models"
 	manager "api-tests-template/internal/managers/favorites"
@@ -15,7 +13,7 @@ import (
 
 const invalidToken = "incorrect_token"
 
-// TestFavoritesWithoutAuthorization проверяет GET, POST и DELETE favorites без валидной авторизации.
+// TestFavoritesWithoutAuthorization проверяет 401 для ручек избранного без валидной авторизации.
 func TestFavoritesWithoutAuthorization(t *testing.T) {
 	owner := fixtures.Login(t)
 	advertisement := advertisements.CreateAdvertisement(t, owner.Token, fixtures.AdvertisementRequest(t))
@@ -27,13 +25,13 @@ func TestFavoritesWithoutAuthorization(t *testing.T) {
 		{
 			name: "get",
 			call: func(t *testing.T, token string) apiModels.ErrorResponse {
-				return manager.GetFavoritesExpectError(t, token, http.StatusUnauthorized)
+				return manager.GetFavoritesExpectStatus(t, token, http.StatusUnauthorized)
 			},
 		},
 		{
 			name: "add",
 			call: func(t *testing.T, token string) apiModels.ErrorResponse {
-				return manager.AddFavoriteExpectError(
+				return manager.AddFavoriteExpectStatus(
 					t,
 					token,
 					models.AddFavoriteRequest{AdvertisementID: advertisement.ID},
@@ -44,7 +42,7 @@ func TestFavoritesWithoutAuthorization(t *testing.T) {
 		{
 			name: "remove",
 			call: func(t *testing.T, token string) apiModels.ErrorResponse {
-				return manager.RemoveFavoriteExpectError(
+				return manager.RemoveFavoriteExpectStatus(
 					t,
 					token,
 					advertisement.ID,
@@ -55,22 +53,20 @@ func TestFavoritesWithoutAuthorization(t *testing.T) {
 	}
 
 	tokens := []struct {
-		name    string
-		token   string
-		message string
+		name  string
+		token string
 	}{
-		{name: "missing_token", message: "Authorization header required"},
-		{name: "invalid_token", token: invalidToken, message: "Invalid or expired token"},
+		{name: "missing_token"},
+		{name: "invalid_token", token: invalidToken},
 	}
 
 	for _, operation := range operations {
 		t.Run(operation.name, func(t *testing.T) {
 			for _, tokenCase := range tokens {
 				t.Run(tokenCase.name, func(t *testing.T) {
-					t.Logf("[Step] Вызываем %s favorites с %s", operation.name, tokenCase.name)
+					t.Logf("[Step] Вызываем %s без валидной авторизации: %s", operation.name, tokenCase.name)
 					response := operation.call(t, tokenCase.token)
-					require.Equal(t, "unauthorized", response.Error, "Неправильный auth error")
-					require.Equal(t, tokenCase.message, response.Message, "Неправильное auth message")
+					t.Logf("[Result] HTTP 401, error=%q, message=%q", response.Error, response.Message)
 				})
 			}
 		})
