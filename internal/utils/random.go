@@ -10,14 +10,12 @@ const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func RandomString(length int) string {
 	b := make([]byte, length)
-
 	for i := range b {
-		index, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		randCharsetIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
 		if err != nil {
-			panic(fmt.Sprintf("Не удалось сгенерировать случайную строку: %s", err))
+			panic(fmt.Sprintf("Не удалось сгенерировать случайное число: %s", err.Error()))
 		}
-
-		b[i] = charset[index.Int64()]
+		b[i] = charset[randCharsetIndex.Int64()]
 	}
 
 	return string(b)
