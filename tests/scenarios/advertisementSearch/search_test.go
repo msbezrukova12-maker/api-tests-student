@@ -4,8 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"api-tests-template/internal/assertions"
 	"api-tests-template/internal/managers/advertisements"
 	"api-tests-template/internal/utils"
@@ -17,7 +15,7 @@ func TestSearchByTitle(t *testing.T) {
 
 	request := fixtures.AdvertisementRequest(t)
 	request.Fields["title"] = "SearchStart " + utils.RandomString(8) + " SearchMiddle SearchEnd"
-	created := advertisements.CreateAdvertisement(t, user.Token, request)
+	advertisements.CreateAdvertisement(t, user.Token, request)
 
 	cases := []struct {
 		name   string
@@ -34,8 +32,7 @@ func TestSearchByTitle(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			list := advertisements.GetAdvertisementsList(t, user.Token, tc.search)
-			found := assertions.FindAdvertisementByID(t, list.Items, created.ID)
-			require.Equal(t, request.Fields["title"], found.Title)
+			assertions.ContainsAdvertisementByTitle(t, list.Items, request.Fields["title"])
 		})
 	}
 }
