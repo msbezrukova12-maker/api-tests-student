@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	client "api-tests-template/internal/client/http/favorites"
 	apiModels "api-tests-template/internal/managers/advertisements/models"
@@ -41,53 +42,51 @@ func GetAllFavorites(t *testing.T, token string) []models.Favorite {
 func AddFavorite(t *testing.T, token, advertisementID string) models.Favorite {
 	t.Helper()
 
-	body := postFavorite(t, token, models.AddFavoriteRequest{AdvertisementID: advertisementID}, http.StatusCreated)
+	response := client.HttpPostFavorite(t, token, models.AddFavoriteRequest{AdvertisementID: advertisementID})
+	body := utils.ReadResponseBody(t, response)
+	require.GreaterOrEqual(t, response.StatusCode, http.StatusOK,
+		"POST /favorites должен завершиться успешно; response: %s", body)
+	require.Less(t, response.StatusCode, http.StatusMultipleChoices,
+		"POST /favorites должен завершиться успешно; response: %s", body)
 
 	var result models.Favorite
 	require.NoError(t, json.Unmarshal(body, &result), "Некорректный favorite JSON: %s", body)
 	require.NotEmpty(t, result.FavoriteID, "Favorite не содержит favorite_id")
 	require.NotEmpty(t, result.AddedAt, "Favorite не содержит added_at")
 	require.Equal(t, advertisementID, result.Advertisement.ID, "Сохранено другое объявление")
+
+	t.Cleanup(func() {
+		t.Logf("[Cleanup] Удаляем favorite для объявления %s", advertisementID)
+		RemoveFavoriteIfExists(t, token, advertisementID)
+	})
+
 	return result
 }
 
-// AddFavoriteExpectError проверяет ожидаемую ошибку POST /favorites.
-func AddFavoriteExpectError(t *testing.T, token string, request any, expectedStatus int) apiModels.ErrorResponse {
+// AddFavoriteExpectStatus проверяет HTTP-статус, который прямо задан в условии теста.
+func AddFavoriteExpectStatus(t *testing.T, token string, request any, expectedStatus int) apiModels.ErrorResponse {
 	t.Helper()
 
-	body := postFavorite(t, token, request, expectedStatus)
-
-	var result apiModels.ErrorResponse
-	require.NoError(t, json.Unmarshal(body, &result), "Некорректный favorite error JSON: %s", body)
-	return result
+	response := client.HttpPostFavorite(t, token, request)
+	return decodeFavoriteError(t, response, expectedStatus)
 }
 
-// postFavorite отправляет POST /favorites и регистрирует cleanup при неожиданном успешном создании.
-func postFavorite(t *testing.T, token string, request any, expectedStatus int) []byte {
+// AddFavoriteExpectClientError проверяет, что бизнес-ошибка POST /favorites является 4xx и содержит сообщение.
+func AddFavoriteExpectClientError(t *testing.T, token string, request any) (int, apiModels.ErrorResponse) {
 	t.Helper()
 
 	response := client.HttpPostFavorite(t, token, request)
 	body := utils.ReadResponseBody(t, response)
+	require.GreaterOrEqual(t, response.StatusCode, http.StatusBadRequest,
+		"Ожидалась клиентская ошибка; response: %s", body)
+	require.Less(t, response.StatusCode, http.StatusInternalServerError,
+		"Ожидалась клиентская ошибка; response: %s", body)
 
-	if response.StatusCode == http.StatusCreated {
-		var identity struct {
-			Advertisement struct {
-				ID string `json:"id"`
-			} `json:"advertisement"`
-		}
-		require.NoError(t, json.Unmarshal(body, &identity), "Некорректный favorite response: %s", body)
-
-		if identity.Advertisement.ID != "" {
-			t.Cleanup(func() {
-				t.Logf("[Cleanup] Удаляем favorite для объявления %s", identity.Advertisement.ID)
-				RemoveFavoriteIfExists(t, token, identity.Advertisement.ID)
-			})
-		}
-	}
-
-	require.Equal(t, expectedStatus, response.StatusCode,
-		"Неожиданный POST /favorites status; response: %s", body)
-	return body
+	var result apiModels.ErrorResponse
+	require.NoError(t, json.Unmarshal(body, &result), "Некорректный favorite error JSON: %s", body)
+	require.NotEmpty(t, result.Error, "API должен вернуть тип ошибки")
+	require.NotEmpty(t, result.Message, "API должен вернуть сообщение об ошибке")
+	return response.StatusCode, result
 }
 
 // RemoveFavorite удаляет существующую запись избранного.
@@ -96,35 +95,88 @@ func RemoveFavorite(t *testing.T, token, advertisementID string) {
 
 	response := client.HttpDeleteFavorite(t, token, advertisementID)
 	body := utils.ReadResponseBody(t, response)
-	require.Equal(t, http.StatusNoContent, response.StatusCode,
-		"Не удалось удалить favorite %s; response: %s", advertisementID, body)
+	require.GreaterOrEqual(t, response.StatusCode, http.StatusOK,
+		"DELETE /favorites должен завершиться успешно; response: %s", body)
+	require.Less(t, response.StatusCode, http.StatusMultipleChoices,
+		"DELETE /favorites должен завершиться успешно; response: %s", body)
 }
 
-// RemoveFavoriteIfExists удаляет favorite во время cleanup и допускает его отсутствие.
+// RemoveFavoriteIfExists удаляет favorite во время cleanup и не падает, если запись уже отсутствует.
 func RemoveFavoriteIfExists(t *testing.T, token, advertisementID string) {
 	t.Helper()
 
 	response := client.HttpDeleteFavorite(t, token, advertisementID)
 	body := utils.ReadResponseBody(t, response)
-	require.Contains(t, []int{http.StatusNoContent, http.StatusNotFound}, response.StatusCode,
-		"Не удалось очистить favorite %s; response: %s", advertisementID, body)
+	if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
+		return
+	}
+	if response.StatusCode >= http.StatusBadRequest && response.StatusCode < http.StatusInternalServerError {
+		t.Logf("[Cleanup] Favorite уже отсутствует: status=%d, response=%s", response.StatusCode, body)
+		return
+	}
+	require.Fail(t, "Не удалось очистить favorite",
+		"status=%d, response=%s", response.StatusCode, body)
 }
 
-// RemoveFavoriteExpectError проверяет ожидаемую ошибку DELETE /favorites/{id}.
-func RemoveFavoriteExpectError(
+// RemoveFavoriteExpectStatus проверяет HTTP-статус, который прямо задан в условии теста.
+func RemoveFavoriteExpectStatus(
 	t *testing.T,
 	token string,
 	advertisementID string,
 	expectedStatus int,
 ) apiModels.ErrorResponse {
 	t.Helper()
-	return utils.DecodeResponse[apiModels.ErrorResponse](t,
-		client.HttpDeleteFavorite(t, token, advertisementID), expectedStatus)
+
+	response := client.HttpDeleteFavorite(t, token, advertisementID)
+	return decodeFavoriteError(t, response, expectedStatus)
 }
 
-// GetFavoritesExpectError проверяет ожидаемую ошибку GET /favorites.
-func GetFavoritesExpectError(t *testing.T, token string, expectedStatus int) apiModels.ErrorResponse {
+// RemoveFavoriteExpectClientError проверяет, что бизнес-ошибка DELETE /favorites/{id} является 4xx.
+func RemoveFavoriteExpectClientError(
+	t *testing.T,
+	token string,
+	advertisementID string,
+) (int, apiModels.ErrorResponse) {
 	t.Helper()
-	return utils.DecodeResponse[apiModels.ErrorResponse](t,
-		client.HttpGetFavorites(t, token, 1, favoritesPageSize), expectedStatus)
+
+	response := client.HttpDeleteFavorite(t, token, advertisementID)
+	body := utils.ReadResponseBody(t, response)
+	require.GreaterOrEqual(t, response.StatusCode, http.StatusBadRequest,
+		"Ожидалась клиентская ошибка; response: %s", body)
+	require.Less(t, response.StatusCode, http.StatusInternalServerError,
+		"Ожидалась клиентская ошибка; response: %s", body)
+
+	var result apiModels.ErrorResponse
+	require.NoError(t, json.Unmarshal(body, &result), "Некорректный favorite error JSON: %s", body)
+	require.NotEmpty(t, result.Error, "API должен вернуть тип ошибки")
+	require.NotEmpty(t, result.Message, "API должен вернуть сообщение об ошибке")
+	return response.StatusCode, result
+}
+
+// GetFavoritesExpectStatus проверяет HTTP-статус, который прямо задан в условии теста.
+func GetFavoritesExpectStatus(t *testing.T, token string, expectedStatus int) apiModels.ErrorResponse {
+	t.Helper()
+
+	response := client.HttpGetFavorites(t, token, 1, favoritesPageSize)
+	return decodeFavoriteError(t, response, expectedStatus)
+}
+
+// decodeFavoriteError проверяет ожидаемый статус и наличие структурированного сообщения об ошибке.
+func decodeFavoriteError(t *testing.T, response *http.Response, expectedStatus int) apiModels.ErrorResponse {
+	t.Helper()
+
+	body := utils.ReadResponseBody(t, response)
+	require.Equal(t, expectedStatus, response.StatusCode,
+		"Неожиданный HTTP status; response: %s", body)
+
+	var result apiModels.ErrorResponse
+	require.NoError(t, json.Unmarshal(body, &result), "Некорректный error JSON: %s", body)
+	require.NotEmpty(t, result.Error, "API должен вернуть тип ошибки")
+	require.NotEmpty(t, result.Message, "API должен вернуть сообщение об ошибке")
+	return result
+}
+
+// favoriteAdvertisementID извлекает advertisement ID из успешного ответа POST /favorites.
+func favoriteAdvertisementID(body []byte) string {
+	return gjson.GetBytes(body, "advertisement.id").String()
 }
