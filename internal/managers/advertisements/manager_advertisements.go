@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	client "api-tests-template/internal/client/http/advertisements"
 	"api-tests-template/internal/managers/advertisements/models"
@@ -22,7 +23,13 @@ func GetAdvertisementsList(t *testing.T, token, text string) models.Advertisemen
 // CreateAdvertisement создаёт объявление и регистрирует cleanup на его удаление.
 func CreateAdvertisement(t *testing.T, token string, request models.CreateAdvertisementRequest) models.Advertisement {
 	t.Helper()
-	body := createAdvertisement(t, token, request, http.StatusCreated)
+
+	response := client.HttpPostAdvertisement(t, token, request)
+	body := utils.ReadResponseBody(t, response)
+	require.Contains(t, []int{http.StatusOK, http.StatusCreated}, response.StatusCode,
+		"Создание объявления должно вернуть 200 или 201; response: %s", body)
+
+	registerAdvertisementCleanup(t, token, body)
 
 	var result models.Advertisement
 	require.NoError(t, json.Unmarshal(body, &result), "Некорректный advertisement response: %s", body)
@@ -38,42 +45,20 @@ func CreateAdvertisementExpectError(
 	expectedStatus int,
 ) models.ErrorResponse {
 	t.Helper()
-	body := createAdvertisement(t, token, request, expectedStatus)
-
-	var result models.ErrorResponse
-	require.NoError(t, json.Unmarshal(body, &result), "Некорректный error response: %s", body)
-	return result
-}
-
-// createAdvertisement создаёт объявление и гарантирует cleanup даже при неожиданном успешном ответе.
-func createAdvertisement(
-	t *testing.T,
-	token string,
-	request models.CreateAdvertisementRequest,
-	expectedStatus int,
-) []byte {
-	t.Helper()
 
 	response := client.HttpPostAdvertisement(t, token, request)
 	body := utils.ReadResponseBody(t, response)
 
-	if response.StatusCode == http.StatusCreated {
-		var identity struct {
-			ID string `json:"id"`
-		}
-		require.NoError(t, json.Unmarshal(body, &identity), "Некорректный creation response: %s", body)
-
-		if identity.ID != "" {
-			t.Cleanup(func() {
-				t.Logf("[Cleanup] Удаляем объявление %s", identity.ID)
-				DeleteAdvertisementIfExists(t, token, identity.ID)
-			})
-		}
+	if response.StatusCode == http.StatusOK || response.StatusCode == http.StatusCreated {
+		registerAdvertisementCleanup(t, token, body)
 	}
 
 	require.Equal(t, expectedStatus, response.StatusCode,
 		"Неожиданный status создания объявления; response: %s", body)
-	return body
+
+	var result models.ErrorResponse
+	require.NoError(t, json.Unmarshal(body, &result), "Некорректный error response: %s", body)
+	return result
 }
 
 // GetAdvertisement возвращает объявление по ID.
@@ -86,6 +71,7 @@ func GetAdvertisement(t *testing.T, token, id string) models.Advertisement {
 // DeleteAdvertisement удаляет объявление и ожидает HTTP 204.
 func DeleteAdvertisement(t *testing.T, token, id string) {
 	t.Helper()
+
 	response := client.HttpDeleteAdvertisement(t, token, id)
 	body := utils.ReadResponseBody(t, response)
 	require.Equal(t, http.StatusNoContent, response.StatusCode,
@@ -116,4 +102,19 @@ func DeleteAdvertisementIfExists(t *testing.T, token, id string) {
 
 	require.Contains(t, []int{http.StatusNoContent, http.StatusNotFound}, response.StatusCode,
 		"Не удалось очистить объявление %s; response: %s", id, body)
+}
+
+// registerAdvertisementCleanup регистрирует удаление объявления, если успешный ответ содержит ID.
+func registerAdvertisementCleanup(t *testing.T, token string, body []byte) {
+	t.Helper()
+
+	id := gjson.GetBytes(body, "id").String()
+	if id == "" {
+		return
+	}
+
+	t.Cleanup(func() {
+		t.Logf("[Cleanup] Удаляем объявление %s", id)
+		DeleteAdvertisementIfExists(t, token, id)
+	})
 }
