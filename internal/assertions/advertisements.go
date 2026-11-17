@@ -9,7 +9,6 @@ import (
 	"api-tests-template/internal/managers/advertisements/models"
 )
 
-// ContainsAdvertisementByTitle проверяет наличие объявления с точным названием.
 func ContainsAdvertisementByTitle(t *testing.T, items []models.Advertisement, title string) {
 	t.Helper()
 
@@ -19,10 +18,9 @@ func ContainsAdvertisementByTitle(t *testing.T, items []models.Advertisement, ti
 		}
 	}
 
-	require.Failf(t, "Объявление не найдено", "В списке нет объявления с названием %q", title)
+	require.Failf(t, "Объявление не найдено", "title=%q", title)
 }
 
-// FindAdvertisementByID возвращает объявление с ожидаемым ID из списка.
 func FindAdvertisementByID(t *testing.T, items []models.Advertisement, id string) models.Advertisement {
 	t.Helper()
 
@@ -32,12 +30,10 @@ func FindAdvertisementByID(t *testing.T, items []models.Advertisement, id string
 		}
 	}
 
-	require.FailNow(t, "Объявление не найдено",
-		"Ожидали ID %s среди %d объявлений", id, len(items))
+	require.FailNow(t, "Объявление не найдено", "id=%s", id)
 	return models.Advertisement{}
 }
 
-// AdvertisementMatchesRequest сравнивает сохранённое объявление со всеми переданными полями.
 func AdvertisementMatchesRequest(
 	t *testing.T,
 	actual models.Advertisement,
@@ -46,24 +42,24 @@ func AdvertisementMatchesRequest(
 ) {
 	t.Helper()
 
-	require.NotEmpty(t, actual.ID, "Advertisement ID пустой")
-	require.Equal(t, request.Fields["title"], actual.Title, "Title отличается от отправленного")
-	require.Equal(t, request.Fields["description"], actual.Description, "Description отличается от отправленного")
+	require.NotEmpty(t, actual.ID)
+	require.Equal(t, request.Fields["title"], actual.Title)
+	require.Equal(t, request.Fields["description"], actual.Description)
 
-	if value, present := request.Fields["price"]; present {
+	if value, ok := request.Fields["price"]; ok {
 		price, err := strconv.ParseFloat(value, 64)
-		require.NoError(t, err, "Некорректная цена в fixture")
-		require.Equal(t, price, actual.Price, "Price отличается от отправленного")
+		require.NoError(t, err)
+		require.Equal(t, price, actual.Price)
 	}
 
-	if value, present := request.Fields["quantity"]; present {
+	if value, ok := request.Fields["quantity"]; ok {
 		quantity, err := strconv.Atoi(value)
-		require.NoError(t, err, "Некорректное quantity в fixture")
-		require.Equal(t, quantity, actual.Quantity, "Quantity отличается от отправленного")
+		require.NoError(t, err)
+		require.Equal(t, quantity, actual.Quantity)
 	}
 
-	require.Equal(t, userID, actual.UserID, "Объявление принадлежит другому пользователю")
-	require.NotEmpty(t, actual.CreatedAt, "CreatedAt пустой")
-	require.NotEmpty(t, actual.UpdatedAt, "UpdatedAt пустой")
-	require.Len(t, actual.Photos, len(request.Photos), "Неожиданное количество фотографий")
+	require.Equal(t, userID, actual.UserID)
+	require.NotEmpty(t, actual.CreatedAt)
+	require.NotEmpty(t, actual.UpdatedAt)
+	require.Len(t, actual.Photos, len(request.Photos))
 }
