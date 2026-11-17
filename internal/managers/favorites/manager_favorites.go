@@ -16,13 +16,15 @@ import (
 func GetAllFavorites(t *testing.T, token string) []models.Favorite {
 	t.Helper()
 
-	response := utils.DecodeResponse[models.FavoritesList](
-		t,
-		client.HttpGetFavorites(t, token),
-		http.StatusOK,
-	)
+	response := client.HttpGetFavorites(t, token)
+	body := utils.ReadResponseBody(t, response)
 
-	return response.Items
+	require.Equal(t, http.StatusOK, response.StatusCode, "response: %s", body)
+
+	var result models.FavoritesList
+	require.NoError(t, json.Unmarshal(body, &result))
+
+	return result.Items
 }
 
 func AddFavorite(t *testing.T, token, advertisementID string) models.Favorite {
@@ -71,18 +73,7 @@ func AddFavoriteExpectClientError(
 ) (int, apiModels.ErrorResponse) {
 	t.Helper()
 
-	response := client.HttpPostFavorite(t, token, request)
-	body := utils.ReadResponseBody(t, response)
-
-	require.GreaterOrEqual(t, response.StatusCode, http.StatusBadRequest, "response: %s", body)
-	require.Less(t, response.StatusCode, http.StatusInternalServerError, "response: %s", body)
-
-	var result apiModels.ErrorResponse
-	require.NoError(t, json.Unmarshal(body, &result))
-	require.NotEmpty(t, result.Error)
-	require.NotEmpty(t, result.Message)
-
-	return response.StatusCode, result
+	return decodeClientError(t, client.HttpPostFavorite(t, token, request))
 }
 
 func RemoveFavorite(t *testing.T, token, advertisementID string) {
@@ -130,18 +121,7 @@ func RemoveFavoriteExpectClientError(
 ) (int, apiModels.ErrorResponse) {
 	t.Helper()
 
-	response := client.HttpDeleteFavorite(t, token, advertisementID)
-	body := utils.ReadResponseBody(t, response)
-
-	require.GreaterOrEqual(t, response.StatusCode, http.StatusBadRequest, "response: %s", body)
-	require.Less(t, response.StatusCode, http.StatusInternalServerError, "response: %s", body)
-
-	var result apiModels.ErrorResponse
-	require.NoError(t, json.Unmarshal(body, &result))
-	require.NotEmpty(t, result.Error)
-	require.NotEmpty(t, result.Message)
-
-	return response.StatusCode, result
+	return decodeClientError(t, client.HttpDeleteFavorite(t, token, advertisementID))
 }
 
 func GetFavoritesExpectStatus(t *testing.T, token string, expectedStatus int) apiModels.ErrorResponse {
@@ -170,4 +150,20 @@ func decodeFavoriteError(
 	require.NotEmpty(t, result.Message)
 
 	return result
+}
+
+func decodeClientError(t *testing.T, response *http.Response) (int, apiModels.ErrorResponse) {
+	t.Helper()
+
+	body := utils.ReadResponseBody(t, response)
+
+	require.GreaterOrEqual(t, response.StatusCode, http.StatusBadRequest, "response: %s", body)
+	require.Less(t, response.StatusCode, http.StatusInternalServerError, "response: %s", body)
+
+	var result apiModels.ErrorResponse
+	require.NoError(t, json.Unmarshal(body, &result))
+	require.NotEmpty(t, result.Error)
+	require.NotEmpty(t, result.Message)
+
+	return response.StatusCode, result
 }
