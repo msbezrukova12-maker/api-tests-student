@@ -82,6 +82,15 @@ func TestCreateAdvertisementInvalidParameters(t *testing.T) {
 				request.Photos = nil
 			},
 		},
+		{
+			name:    "unsupported_photo_format",
+			message: `photo 1: file type not allowed: extension ".txt"`,
+			prepare: func(request *models.CreateAdvertisementRequest) {
+				request.Photos = []models.PhotoUpload{
+					{Name: "photo.txt", Content: []byte("This is a text file.")},
+				}
+			},
+		},
 	}
 
 	for _, tc := range cases {
